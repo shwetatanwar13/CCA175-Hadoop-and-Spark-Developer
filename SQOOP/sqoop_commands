@@ -1,0 +1,235 @@
+#list databases in mysql
+sqoop list-databases --connect jdbc:mysql://ms.itversity.com:3306/ --username retail_user --password itversity
+
+#list tables in a schema
+sqoop list-tables --connect jdbc:mysql://ms.itversity.com:3306/retail_db --username retail_user --password itversity
+
+#or using eval
+
+sqoop eval --connect jdbc:mysql://ms.itversity.com:3306/retail_export --username retail_user --password itversity --e "show tables"
+
+#run query using eval
+sqoop eval --connect jdbc:mysql://ms.itversity.com:3306/retail_db --username retail_user --password itversity --query "select * from customers limit 3"
+
+sqoop eval --connect jdbc:mysql://ms.itversity.com:3306/retail_db --username retail_user --password itversity --e "select * from order_items limit 5"
+
+sqoop eval --connect jdbc:mysql://ms.itversity.com:3306/retail_export --username retail_user --password itversity --e "create table st_login(name varchar(20),login_dt timestamp)"
+
+sqoop eval --connect jdbc:mysql://ms.itversity.com:3306/retail_export --username retail_user --password itversity --e "insert into st_login values ('st',CURRENT_TIMESTAMP)"
+
+#import table into hdfs
+sqoop import --connect jdbc:mysql://ms.itversity.com:3306/retail_db --table order_items --username retail_user --password itversity --warehouse-dir \
+> /user/shwetatanwar13/sqoop_import
+
+hdfs dfs -ls /user/shwetatanwar13/sqoop_import/order_items
+
+hdfs dfs -tail /user/shwetatanwar13/sqoop_import/order_items/part-m-00000
+
+
+hdfs dfs -du -s -h /user/shwetatanwar13/sqoop_import/order_items/part-m-00000
+
+**************************21-nov-2018***********************************
+Error if the folder already exists
+020/user/shwetatanwar13/sqoop_import/order_items already exists
+
+
+sqoop import --connect jdbc:mysql://ms.itversity.com:3306/retail_db --table customers --username retail_user --password itversity --warehouse-dir /user/shwetatanwar13/sqoop_import
+
+#one mapper
+sqoop import --connect jdbc:mysql://ms.itversity.com:3306/retail_db --table products --username retail_user --password itversity --warehouse-dir /user/shwetatanwar13/sqoop_import -m 1
+
+hdfs dfs -ls /user/shwetatanwar13/sqoop_import/products
+hdfs dfs -tail /user/shwetatanwar13/sqoop_import/products/part-m-00000
+hdfs dfs -du -s -h /user/shwetatanwar13/sqoop_import/products/part-m-00000
+
+#wc can be run on local only
+wc -l /data/retail_db/products/part-00000
+
+
+#delete target directory before importing
+sqoop import --connect jdbc:mysql://ms.itversity.com:3306/retail_db --table products --username retail_user --password itversity --warehouse-dir /user/shwetatanwar13/sqoop_import -m 1 --delete-target-dir
+
+#append into the target dir
+sqoop import --connect jdbc:mysql://ms.itversity.com:3306/retail_db --table products --username retail_user --password itversity --warehouse-dir /user/shwetatanwar13/sqoop_import -m 1 --append
+
+#describe a table to see primary key
+sqoop eval --connect jdbc:mysql://ms.itversity.com:3306/retail_export --username retail_user --password itversity --e "describe customers"
+
+sqoop eval --connect jdbc:mysql://ms.itversity.com:3306/retail_db --username retail_user --password itversity --e "describe customers"
+
+#error loading a table with no primary key and moret han 1 mappers
+ ERROR tool.ImportTool: Error during import: No primary key could be found for table customers. Please specify one with --split-by or perform a sequential import with '-m 1'.
+
+#Run with m=1
+sqoop import --connect jdbc:mysql://ms.itversity.com:3306/retail_export --table customers --username retail_user --password itversity --warehouse-dir /user/shwetatanwar13/sqoop_import --delete-target-dir -m 1
+
+#split by for tables without primary key
+sqoop import --connect jdbc:mysql://ms.itversity.com:3306/retail_export --table customers --username retail_user --password itversity --warehouse-dir /user/shwetatanwar13/sqoop_import --delete-target-dir --split-by cust_id
+
+#apache.sqoop.splitter.allow_text_splitter=true" property passed as a parameter
+#error when split by string
+sqoop import --connect jdbc:mysql://ms.itversity.com:3306/retail_export --table customers --username retail_user --password itversity --warehouse-dir /user/shwetatanwar13/sqoop_import --delete-target-dir --split-by zip_cd
+
+#avoid error when split by string column
+sqoop import \
+-Dorg.apache.sqoop.splitter.allow_text_splitter=true \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--table customers \
+--username retail_user \
+--password itversity \
+--warehouse-dir /user/shwetatanwar13/sqoop_import \
+--delete-target-dir 
+--split-by zip_cd 
+
+sqoop eval --connect jdbc:mysql://ms.itversity.com:3306/retail_export --username retail_user --password itversity --e "select distinct bname from product"
+
+sqoop import -Dorg.apache.sqoop.splitter.allow_text_splitter=true --connect jdbc:mysql://ms.itversity.com:3306/retail_export --table product --username retail_user --password itversity --warehouse-dir /user/shwetatanwar13/sqoop_import --delete-target-dir --split-by bname
+
+#When split by non primary key col no of mappers are equal to no of distinct val
+
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--table product \
+--username retail_user \
+--password itversity \
+--warehouse-dir /user/shwetatanwar13/sqoop_import \
+--delete-target-dir \
+--split-by pid
+
+sqoop eval \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity --e "select distinct pid from product"
+
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/hr_db \
+--username hr_user \
+--password itversity \
+--table employees \
+--warehouse-dir /user/shwetatanwar13/sqoop_import/hr_db
+****************************************22 Nov*****************************************
+hdfs dfs -rmr /user/shwetatanwar13/sqoop_import/hr_db
+
+#import by changing nulls
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/hr_db \
+--username hr_user \
+--password itversity \
+--table employees \
+--null-non-string -1 \
+--null-string 'No Data' \
+--fields-terminated-by '\t' \
+--warehouse-dir /user/shwetatanwar13/sqoop_import/hr_db
+--lines-terminated-by ':'
+--warehouse-dir /user/shwetatanwar13/sqoop_import/hr_db
+
+mkdir -p /home/shwetatanwar13/hr_db/employees
+
+hdfs dfs -get /user/shwetatanwar13/sqoop_import/hr_db/employees
+
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/hr_db \
+--username hr_user \
+--password itversity \
+--table employees \
+--warehouse-dir /user/shwetatanwar13/sqoop_import/hr_db
+
+# connect to my sql
+mysql -u retail_user -h ms.itversity.com -p
+
+select c.customer_fname,c.customer_email,o.order_date,o.order_status
+from customers c,orders o
+where c.customer_id = o.order_customer_id;
+
+#import data of a query
+# gives error you must specify --split-by.
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+-e "select c.customer_fname,c.customer_email,o.order_date,o.order_status 
+from customers c,orders o 
+where c.customer_id = o.order_customer_id" \
+--target-dir /user/shwetatanwar13/sqoop_import/query
+
+#gives must contain '$CONDITIONS' in WHERE clause. error
+#$CONDITIONS is must and must be back slashed if query is between " "
+#also split by column must be present in the select query
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+-e "select c.customer_id,c.customer_fname,c.customer_email,o.order_date,o.order_status 
+from customers c,orders o 
+where c.customer_id = o.order_customer_id and \$CONDITIONS" \
+--target-dir /user/shwetatanwar13/sqoop_import/query \
+--split-by customer_id
+
+#--autoreset-to-one-mapper for tables with np pk
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--table soup \
+--warehouse-dir /user/shwetatanwar13/sqoop_import \
+--autoreset-to-one-mapper
+
+
+sqoop eval \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+-e "select * from soup"
+
+
+**************************23 Nov**************************************
+#Incremental Upload
+
+select * from orders where order_date like '2013-07-25%';
+
+#Using query
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+-e "select * from orders where order_date like '2013-07-25%' and \$CONDITIONS" \
+--target-dir /user/shwetatanwar13/sqoop_import/inc_query \
+--split-by order_id
+
+hdfs dfs -tail /user/shwetatanwar13/sqoop_import/inc_query/part-m-00000
+
+#Using where
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table orders \
+--warehouse-dir /user/shwetatanwar13/sqoop_import \
+--where "order_date like '2013-07-25%'"
+
+#append incremental data
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table orders \
+--warehouse-dir /user/shwetatanwar13/sqoop_import \
+--where "order_date like '2013-07-31%'" \
+--append
+
+sqoop eval \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+-e "select * from orders where order_date like '2013-07-24%'" 
+
+#increamental load using sqoop official way
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table orders \
+--warehouse-dir /user/shwetatanwar13/sqoop_import \
+--check-column order_date \
+--incremental append \
+--last-value '2013-07-31'
