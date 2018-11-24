@@ -1,0 +1,62 @@
+#create table in hive
+
+create table customers(
+customer_id  int,     
+customer_fname  string,
+customer_lname string,
+customer_email string,
+customer_password string,
+customer_street string,
+customer_city string,
+customer_state string,
+customer_zipcode string)
+
+insert into customers(customer_id,customer_fname,customer_lname,customer_email,customer_password,customer_street,customer_city,customer_state,customer_zipcode) values (1,'Shweta','Tanwar','awt2344@gmail.com','asdf','123','fremont',CA,'94538');
+
+#import into hive table the temp directory is deleted after importing into hive
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table customers \
+--hive-import \
+--hive-database st_sqoop_import \
+--hive-table customers \
+--target-dir /user/shwetatanwar13/sqoop_import/customers1
+
+hdfs dfs -rm -R /user/shwetatanwar13/customers
+
+#list files in the hive location
+hdfs dfs -ls /apps/hive/warehouse/st_sqoop_import.db/customers
+
+#Over write data into hive table
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table customers \
+--hive-import \
+--hive-database st_sqoop_import \
+--hive-table customers \
+--hive-overwrite
+
+#Throw error if folder exists FAILED: Execution Error, return code 1 from org.apache.hadoop.hive.ql.exec.DDLTask. AlreadyExistsException(message:Table customers already exists)
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table customers \
+--hive-import \
+--hive-database st_sqoop_import \
+--create-hive-table
+
+#target-dir doestnt matter as the staging file is created in the home dir 
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table customers \
+--hive-import \
+--hive-database st_sqoop_import \
+--create-hive-table
+--target-dir /user/shwetatanwar13/sqoop_import/customers2
