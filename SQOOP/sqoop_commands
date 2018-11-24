@@ -233,3 +233,27 @@ sqoop import \
 --check-column order_date \
 --incremental append \
 --last-value '2013-07-31'
+
+
+#import all will throw error if no pk is present
+sqoop import-all-tables \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--warehouse-dir /user/shwetatanwar13/sqoop_import/retail_db
+
+# works even od retail_db is present as the tables are excluded
+sqoop import-all-tables \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--warehouse-dir /user/shwetatanwar13/sqoop_import/retail_db \
+--autoreset-to-one-mapper \
+--exclude-tables categories,customers,departments,order_items
+
+
+sqoop eval \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+-e "show tables"
