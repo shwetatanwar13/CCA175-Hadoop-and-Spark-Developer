@@ -1,0 +1,216 @@
+#create hive tables
+create table orders(
+order_id int,
+order_date timestamp,
+order_customer_id int,
+order_status string
+)
+
+create table order_items(
+order_item_id int,
+order_item_order_id int,
+order_item_product_id int,
+order_item_quantity int,
+order_item_subtotal float,
+order_item_product_price float
+)
+
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table orders \
+--hive-import \
+--hive-database st_sqoop_import \
+--hive-table orders
+
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table order_items \
+--hive-import \
+--hive-database st_sqoop_import \
+--hive-table order_items
+
+#table with daily revenue in hive
+create table daily_revenue as
+select order_date,sum(order_item_subtotal) daily_revenue
+from orders o,order_items oi
+where o.order_id = oi.order_item_id
+and order_date like '2013-07%'
+group by order_date;
+
+create table daily_revenue_st as
+select order_date,sum(order_item_subtotal) daily_revenue
+from orders o,order_items oi
+where o.order_id = oi.order_item_id
+group by order_date;
+
+insert into table st_sqoop_import.daily_revenue
+select order_date,sum(order_item_subtotal) daily_revenue
+from orders o,order_items oi
+where o.order_id = oi.order_item_id
+and order_date like '2013-08%'
+group by order_date;
+
+use st_sqoop_import;
+
+insert into table daily_revenue_st
+select order_date,sum(order_item_subtotal) daily_revenue
+from orders o,order_items oi
+where o.order_id = oi.order_item_id
+and order_date like '2013-09%'
+group by order_date;
+
+#fails as delimiter is not specified
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /apps/hive/warehouse/st_sqoop_import.db/daily_revenue \
+--table daily_revenue
+
+#
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /apps/hive/warehouse/st_sqoop_import.db/daily_revenue \
+--table daily_revenue_st \
+--input-fields-terminated-by '\001'
+
+#Export table with no of columns different than file
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /apps/hive/warehouse/st_sqoop_import.db/daily_revenue \
+--table daily_revenue_st_demo \
+--columns order_date,daily_revenue \
+--input-fields-terminated-by '\001'
+
+
+hdfs dfs -chmod 744 sqoop_import/demo_daily_revenue
+
+'This is first line','2013-07-27 00:00:00',35312.82
+
+hdfs dfs -put customers/daily_revenue_demo /user/shwetatanwar13/sqoop_import/
+hdfs dfs -rm -R sqoop_import/daily_revenue_demo
+
+#export using a comma separated file with same columns as table in mysql
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /user/shwetatanwar13/sqoop_import/daily_revenue_demo \
+--table daily_revenue_st_demo \
+--input-fields-terminated-by ',' \
+--input-optionally-enclosed-by "\'"
+
+#default delimiter is , so no need to specify
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /user/shwetatanwar13/sqoop_import/daily_revenue_demo \
+--table daily_revenue_st_demo \
+--input-optionally-enclosed-by "\'"
+
+ALTER TABLE daily_revenue_st
+ADD PRIMARY KEY (order_date);
+
+#Duplicate entry '2013-07-25 00:00:00' for key 'PRIMARY' at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method) at 
+
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /apps/hive/warehouse/st_sqoop_import.db/daily_revenue \
+--table daily_revenue_st \
+--columns order_date,daily_revenue \
+--input-fields-terminated-by '\001'
+
+
+ALTER TABLE daily_revenue_st CHANGE order_date order_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+
+#update the primary keys but do not insert new rows
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /apps/hive/warehouse/st_sqoop_import.db/daily_revenue \
+--table daily_revenue_st \
+--columns order_date,daily_revenue \
+--update-key order_date \
+--input-fields-terminated-by '\001'
+
+#update the primary keys and insert new rows
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /apps/hive/warehouse/st_sqoop_import.db/daily_revenue_st \
+--table daily_revenue_st \
+--columns order_date,daily_revenue \
+--update-key order_date \
+--update-mode allowinsert \
+--input-fields-terminated-by '\001'
+
+#create staging table
+create table daily_revenue_st_stage(
+order_date 
+
+#show table metadata ddl
+SHOW CREATE TABLE daily_revenue_st;
+
+CREATE TABLE daily_revenue_st_stage(
+  order_date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  daily_revenue double DEFAULT NULL
+);
+
+
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /apps/hive/warehouse/st_sqoop_import.db/daily_revenue_st \
+--table daily_revenue_st \
+--staging-table daily_revenue_st_stage \
+--input-fields-terminated-by '\001'
+
+
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /apps/hive/warehouse/st_sqoop_import.db/daily_revenue_st \
+--table daily_revenue_st \
+--input-fields-terminated-by '\001'
+
+delete from daily_revenue_st where order_date !='2014-07-01';
+
+#Staging table cannot be used when export is running in update mode.
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /apps/hive/warehouse/st_sqoop_import.db/daily_revenue_st \
+--table daily_revenue_st \
+--staging-table daily_revenue_st_stage \
+--input-fields-terminated-by '\001' \
+--update-key order_date \
+--update-mode allowinsert \
+--clear-staging-table
+
+#clear staging tble before inserting
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--export-dir /apps/hive/warehouse/st_sqoop_import.db/daily_revenue_st \
+--table daily_revenue_st \
+--staging-table daily_revenue_st_stage \
+--input-fields-terminated-by '\001' \
+--clear-staging-table
