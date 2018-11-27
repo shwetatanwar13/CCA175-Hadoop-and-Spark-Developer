@@ -568,3 +568,147 @@ oiRDD2.take(5)
 
 for i in oiRDD2.take(10):
  print(i)
+
+#Get order item id with minimum revenue for each order_id - reduceByKey
+oiRDD=sc.textFile("/public/retail_db/order_items").map(lambda x:(int(x.split(',')[1]),float(x.split(',')[4])))
+oiRDD.take(5)
+oiMinRevRDD=oiRDD.reduceByKey(lambda x,y:min(x,y))
+oiMinRevRDD.take(5)
+
+#Get order item details with minimum subtotal for each order_id - reduceByKey
+oiRDD=sc.textFile("/public/retail_db/order_items").map(lambda x:(int(x.split(',')[1]),x))
+oiRDD.take(5)
+oiMinRevRDD=oiRDD.reduceByKey(lambda x,y:min(float(x.split(",")[4]),float(y.split(",")[4])))
+
+oiMinRevRDD=oiRDD.reduceByKey(lambda x,y:min(x.split(',')[4],y.split(',')[4]))
+oiMinRevRDD.take(5)
+
+
+oiMinRevRDD=oiRDD.reduceByKey(lambda x, y: x if(float(x.split(",")[4]) < float(y.split(",")[4])) else y)
+x='3,2,502,5,250.0,50.0'
+y='2,2,1073,1,199.99,199.99'
+
+lambda x,y:print(min(float(x.split(",")[4]),float(y.split(",")[4])))
+
+lambda x,y:print(x,y)
+lambda x:print(x)
+print(lambda x, y: x if(float(x.split(",")[4]) < float(y.split(",")[4])) else y)
+
+#Get revenue and count of items for each order id
+oiRDD=sc.textFile("/public/retail_db/order_items").map(lambda x:(
+int(x.split(1)),(float(x.split(4)),1)))
+oiRDD.take(5)
+
+
+oiRDD=sc.textFile("/public/retail_db/order_items").map(lambda x:(int(x.split(1)),(float(x.split(4)),1)))
+oiRev=oiRDD.reduceByKey(lambda x,y:(x[0]+y[0],x[1]+y[1]))
+oiRev.take(5)
+
+#Sort data by product price - sortByKey
+productRDD=sc.textFile("/public/retail_db/products/part-00000")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+ppRDD=productRDD.map(lambda x:(float(x.split(',')[4]),x))
+ppRDD.take(5)
+sortedRDD=ppRDD.sortByKey().map(lambda x:x[1])
+sortedRDD.take(10)
+
+***************************************26 Nov***********************************
+#Sort data by product category and then product price descending - sortByKey
+
+#below way only sorts both in acsending order
+productRDD=sc.textFile("/public/retail_db/products/")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+kvRDD=productRDD.map(lambda x:((int(x.split(',')[1]),float(x.split(',')[4])),x))
+kvRDD.take(5)
+sortedRDD=kvRDD.sortByKey().map(lambda x:x[1])
+for i in sortedRDD.take(15):print(i)
+
+#below way only sorts both in descending order
+productRDD=sc.textFile("/public/retail_db/products/")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+kvRDD=productRDD.map(lambda x:((int(x.split(',')[1]),float(x.split(',')[4])),x))
+kvRDD.take(5)
+sortedRDD=kvRDD.sortByKey(False).map(lambda x:x[1])
+for i in sortedRDD.take(15):print(i)
+
+#below way sorts product category in ascending but product price in  descending order
+productRDD=sc.textFile("/public/retail_db/products/")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+kvRDD=productRDD.map(lambda x:((int(x.split(',')[1]),-float(x.split(',')[4])),x))
+kvRDD.take(5)
+sortedRDD=kvRDD.sortByKey().map(lambda x:x[1])
+for i in sortedRDD.take(15):print(i)
+
+#Get top N products by price - Global Ranking - top or takeOrdered
+#order ascending on price
+productRDD=sc.textFile("/public/retail_db/products/")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+sortedRDD=productRDD.takeOrdered(10,key=lambda p:p.split(",")[4])
+for i in sortedRDD:print(i)
+
+#Using takeOrdered
+#order descending on price
+productRDD=sc.textFile("/public/retail_db/products/")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+sortedRDD=productRDD.takeOrdered(10,key=lambda p:-float(p.split(",")[4]))
+for i in sortedRDD:print(i)
+
+#order on category and price ascending
+productRDD=sc.textFile("/public/retail_db/products/")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+sortedRDD=productRDD.takeOrdered(10,key=lambda p:(int(p.split(",")[1]),float(p.split(",")[4])))
+for i in sortedRDD:print(i)
+
+#order on category ascending and price descending
+productRDD=sc.textFile("/public/retail_db/products/")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+sortedRDD=productRDD.takeOrdered(10,key=lambda p:(int(p.split(",")[1]),-float(p.split(",")[4])))
+for i in sortedRDD:print(i)
+
+#Using Top by default descenindg on price
+productRDD=sc.textFile("/public/retail_db/products/")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+sortedRDD=productRDD.top(10,key=lambda p:float(p.split(",")[4]))
+for i in sortedRDD:print(i)
+
+#Using Top by default ascending on price
+productRDD=sc.textFile("/public/retail_db/products/")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+sortedRDD=productRDD.top(10,key=lambda p:-float(p.split(",")[4]))
+for i in sortedRDD:print(i)
+
+#Using Top by default ascending on category,price
+productRDD=sc.textFile("/public/retail_db/products/")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+sortedRDD=productRDD.top(10,key=lambda p:(int(p.split(",")[1]),-float(p.split(",")[4])))
+for i in sortedRDD:print(i)
+
+
+#Get top N priced products - By Key Ranking
+ 
+productRDD=sc.textFile("/public/retail_db/products/")
+productRDD=productRDD.filter(lambda p:p.split(",")[4]!="")
+
+kvRDD=productRDD.map(lambda x:(int(x.split(',')[1]),x))
+sortedRDD=kvRDD.groupByKey()
+sortedRDD.take(5)
+finalRDD=sortedRDD.flatMap(lambda x:sortPrice(list(x[1])))
+
+t = sortedRDD. \
+filter(lambda p: p[0] == 59). \
+map(lambda x:list(x[1])). \
+first()
+
+sortPrice(t)
+
+def sortPrice(list1):
+  slist=sorted(list1,key=lambda x:float(x.split(',')[4]),reverse=True)
+  print(slist)
+  topPrice=sorted(set([float(x.split(',')[4]) for x in list1]),reverse=True)[:3]
+  print(topPrice)
+  import itertools as it
+  finallist=it.takewhile(lambda x:float(x.split(',')[4]) in topPrice,slist)
+  return list(finallist)
+
+for i in finalRDD.take(10):print(i)
+  
