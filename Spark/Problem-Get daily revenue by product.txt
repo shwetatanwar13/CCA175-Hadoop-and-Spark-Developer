@@ -1,0 +1,113 @@
+#Get daily revenue by product considering completed and closed orders.
+#Data need to be sorted in ascending order by date and then descending
+#Data for orders and order_items is available in HDFS
+
+#go to resourec manager ip addres:8088
+#check in yarn-site.xml for yarn.resourcemanager.webapp.address
+
+orderRDD=sc.textFile("/public/retail_db/orders")
+orderRDD.take(5)
+filterorderRDD=orderRDD.filter(lambda x:x.split(",")[3] in ("CLOSED","COMPLETE")). \
+map(lambda x:(int(x.split(",")[0]),x.split(",")[1][:10]))
+filterorderRDD.take(5)
+(1, u'2013-07-25')
+(3, u'2013-07-25')
+(4, u'2013-07-25') 
+(5, u'2013-07-25') 
+(6, u'2013-07-25')
+
+oiRDD=sc.textFile("/public/retail_db/order_items")
+kvoiRDD=oiRDD.map(lambda x:(int(x.split(",")[1]),x))
+kvoiRDD.take(5)
+
+(1, u'1,1,957,1,299.98,299.98')
+(2, u'2,2,1073,1,199.99,199.99')
+(2, u'3,2,502,5,250.0,50.0')
+(2, u'4,2,403,1,129.99,129.99')
+(4, u'5,4,897,2,49.98,24.99')
+
+orderitemRDD=filterorderRDD.join(kvoiRDD)
+orderitemRDD.take(5)
+
+(65536, (u'2014-05-16', u'163797,65536,957,1,299.98,299.98'))
+(65536, (u'2014-05-16', u'163798,65536,1014,3,149.94,49.98'))
+(65536, (u'2014-05-16', u'163799,65536,957,1,299.98,299.98'))
+(65536, (u'2014-05-16', u'163800,65536,1014,3,149.94,49.98'))
+(4, (u'2013-07-25', u'5,4,897,2,49.98,24.99'))
+
+
+productrevRDD=orderitemRDD.map(lambda x:((x[1][0],int(x[1][1].split(',')[2])),float(x[1][1].split(',')[4])))
+productrevRDD.take(5)
+
+((u'2014-05-16', 957), 299.98), 
+((u'2014-05-16', 1014), 149.94), 
+((u'2014-05-16', 957), 299.98), 
+((u'2014-05-16', 1014), 149.94),
+ ((u'2013-07-25', 897), 49.98)
+
+productdailyrevRDD=productrevRDD.reduceByKey(lambda x,y:x+y)
+productdailyrevRDD=productdailyrevRDD.map(lambda x:(x[0][1],(x[0][0],x[1])))
+productdailyrevRDD.take(5)
+
+(917, (u'2014-03-12', 87.96)), 
+(1014, (u'2013-07-25', 2798.88)),
+(1004, (u'2013-11-02', 4799.76)), 
+(982, (u'2013-10-18', 149.99)), 
+(364, (u'2013-08-08', 299.99))
+
+
+#Data for products is available locally under /data/retail_db/products
+product=open("/data/retail_db/products/part-00000")
+productRDD=sc.parallelize(product)
+productRDD=productRDD.map(lambda x:(int(x.split(',')[0]),x.split(',')[2]))
+productRDD.take(5)
+
+(1, 'Quest Q64 10 FT. x 10 FT. Slant Leg Instant U'), 
+(2, "Under Armour Men's Highlight MC Football Clea"), 
+(3, "Under Armour Men's Renegade D Mid Football Cl"), 
+(4, "Under Armour Men's RenegadeD Mid Football Cl"), 
+(5, 'Riddell Youth Revolution Speed Custom Footbal')
+
+
+finalRDD=productdailyrevRDD.join(productRDD)
+finalRDD=finalRDD.map(lambda x:((x[1][0][0],-round(x[1][0][1],2)),(round(x[1][0][1],2),x[1][1])))
+finalRDD.take(5)
+
+((u'2014-03-20', -159.98), (159.98, 'Elevation Training Mask 2.0')), 
+((u'2013-10-12', -239.97), (239.97, 'Elevation Training Mask 2.0')), 
+((u'2013-11-19', -239.97), (239.97, 'Elevation Training Mask 2.0')), 
+((u'2013-11-02', -79.99), (79.99, 'Elevation Training Mask 2.0')), 
+((u'2013-08-26', -239.97), (239.97, 'Elevation Training Mask 2.0'))
+
+sortedfinalRDD=finalRDD.sortByKey().map(lambda x:str(x[0][0])+','+str(x[1][0])+','+str(x[1][1]))
+
+for i in sortedfinalRDD.take(50):print(i)
+
+2013-07-25,5599.72,Field & Stream Sportsman 16 Gun Fire Safe
+2013-07-25,5099.49,Nike Men's Free 5.0+ Running Shoe
+2013-07-25,4499.7,Diamondback Women's Serene Classic Comfort Bi
+2013-07-25,3359.44,Perfect Fitness Perfect Rip Deck
+2013-07-25,2999.85,Pelican Sunstream 100 Kayak
+2013-07-25,2798.88,O'Brien Men's Neoprene Life Vest
+2013-07-25,1949.85,Nike Men's CJ Elite 2 TD Football Cleat
+2013-07-25,1650.0,Nike Men's Dri-FIT Victory Golf Polo
+2013-07-25,1079.73,Under Armour Girls' Toddler Spine Surge Runni
+2013-07-25,599.99,Bowflex SelectTech 1090 Dumbbells
+2013-07-25,319.96,Elevation Training Mask 2.0
+
+
+sortedfinalRDD.saveAsTextFile("/user/shwetatanwar13/daily_revenue_txt_python")
+
+f1=sortedfinalRDD.collect()
+l=open("/home/shwetatanwar13/daily_revenue_python",'w')
+
+pyspark --master yarn \
+ --conf spark.ui.port=12890 \
+ --num-executors 2 \
+ --executor-memory 512M \
+ --packages com.databricks:spark-avro_2.10:2.0.1
+
+avrofinalRDD=finalRDD.sortByKey().map(lambda x:(x[0][0]),x[1][0],x[1][1]))
+avrofinalRDD.toDF(["Date","Revenue","Product"])
+
+df=sqlContext.load("/user/shwetatanwar13/daily_revenue_avro_python","com.databricks.spark.avro")

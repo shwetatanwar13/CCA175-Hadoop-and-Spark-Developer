@@ -1,0 +1,47 @@
+orderRDD=sc.textFile("/public/retail_db/orders/part-00000")
+orderRDD=orderRDD.map(lambda x:str(x.split(',')[0])+ '\t'+ str(x.split(',')[3]))
+orderRDD.take(5)
+orderRDD.saveAsTextFile("/user/shwetatanwar13/orderRDD")
+
+orderRDD=sc.textFile("/user/shwetatanwar13/orderRDD")
+orderRDD.take(5)
+
+orderDF=orderRDD.toDF(schema=["Order_Id","Order_Status"])
+
+# Saving as text file - compression
+
+# Get compression codec from /etc/hadoop/conf/core-site.xml
+cat /etc/hadoop/conf/core-site.xml
+
+org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.SnappyCodec
+
+orderRDD=sc.textFile("/public/retail_db/orders/part-00000")
+orderRDD=orderRDD.map(lambda x:str(x.split(',')[0])+str(x.split(',')[3]))
+orderRDD.take(5)
+orderRDD.saveAsTextFile("/user/shwetatanwar13/orderRDD2","org.apache.hadoop.io.compress.GzipCodec")
+orderRDD.saveAsTextFile("/user/shwetatanwar13/orderRDD3","org.apache.hadoop.io.compress.SnappyCodec")
+
+orderRDD=sc.textFile("/user/shwetatanwar13/orderRDD2/part-00000.gz")
+orderRDD.take(5)
+
+hdfs dfs -tail /user/shwetatanwar13/orderRDD2/part-00000.gz
+hdfs dfs -ls /user/shwetatanwar13/orderRDD3
+
+
+# Saving as JSON - Get revenue per order id
+
+orderRDD=sc.textFile("/public/retail_db/orders/part-00000")
+mapRDD=orderRDD.map(lambda x:(x.split(',')[3],1))
+finalRDD=mapRDD.reduceByKey(lambda x,y:x+y)
+finalRDD.take(5)
+orderDF=finalRDD.toDF(schema=["Status","Total"])
+orderDF.show()
+orderDF.save("/user/shwetatanwar13/orderDFjson","json")
+
+orderDF.write.json("/user/shwetatanwar13/orderDFjson1")
+
+hdfs dfs -ls /user/shwetatanwar13/orderDFjson1
+
+hdfs dfs -ls /user/shwetatanwar13/orderDFjson
+hdfs dfs -tail /user/shwetatanwar13/orderDFjson/part-r-00000-f08188a5-4362-428e-928a-176c414d35d6
+hdfs dfs -tail /user/shwetatanwar13/orderDFjson1/part-r-00000-9ca0306f-2789-4a61-8722-b868f0da0e7e

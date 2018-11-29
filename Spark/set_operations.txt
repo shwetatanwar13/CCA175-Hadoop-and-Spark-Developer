@@ -1,0 +1,33 @@
+#Set operations
+
+#Set operations - Prepare data - subsets of products for 2013-12 and 2014-01
+
+oiRDD=sc.textFile("/public/retail_db/order_items")
+ordersRDD=sc.textFile("/public/retail_db/orders")
+
+orders201312=ordersRDD.filter(lambda x:x.split(',')[1].startswith('2013-12')).map(lambda x:(int(x.split(',')[0]),x))
+orders201312.take(5)
+
+orders201401=ordersRDD.filter(lambda x:x.split(',')[1].startswith('2014-01')).map(lambda x:(int(x.split(',')[0]),x))
+orders201401.take(5)
+
+productRDD=oiRDD.map(lambda x:(int(x.split(',')[1]),int(x.split(',')[2])))
+productRDD.take(5)
+products201312=orders201312.join(productRDD).map(lambda x:x[1][1])
+products201312.take(5)
+products201401=orders201401.join(productRDD).map(lambda x:x[1][1])
+products201401.take(5)
+
+#Set operations - Union - Get product ids sold in 2013-12 and 2014-01
+allproducts=products201312.union(products201401).distinct()
+allproducts.take(10)
+
+#Set operations - Intersection - Get product ids sold in both 2013-12 and 2014-01
+
+commonproducts=products201401.intersection(products201312)
+commonproducts.take(10)
+
+#Set operations - minus - Get product ids sold in 2013-12 but not in 2014-01
+products201312only=products201312.subtract(products201401).distinct()
+products201312only.take(10)
+
