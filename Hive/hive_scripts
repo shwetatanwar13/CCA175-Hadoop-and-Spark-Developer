@@ -1,0 +1,525 @@
+set hive.metastore.warehouse.dir;
+create database st_retail_db_txt;
+
+use st_retail_db_txt;
+
+load data local inpath '/data/retail_db/order_items' into table order_items;
+load data local inpath '/data/retail_db/orders' into table orders;
+
+create table orders (
+  order_id int,
+  order_date string,
+  order_customer_id int,
+  order_status string
+) row format delimited fields terminated by ','
+stored as textfile;
+
+create table st_retail_db_txt.order_items (
+  order_item_id int,
+  order_item_order_id int,
+  order_item_product_id int,
+  order_item_quantity int,
+  order_item_subtotal float,
+  order_item_product_price float
+) row format delimited fields terminated by ','
+stored as textfile;
+
+create database st_retail_db_orc;
+use st_retail_db_orc;
+
+create table orders (
+  order_id int,
+  order_date string,
+  order_customer_id int,
+  order_status string
+) row format delimited fields terminated by ','
+stored as orc;
+
+load data local inpath '/data/retail_db/orders' into table orders; --fails FAILED: SemanticException Unable to load data to destination table. Error: The file that you are trying to load #does not match the file format of the destination table.
+
+insert into table orders select * from st_retail_db_txt.orders;
+
+create table order_items (
+  order_item_id int,
+  order_item_order_id int,
+  order_item_product_id int,
+  order_item_quantity int,
+  order_item_subtotal float,
+  order_item_product_price float
+) stored as orc;
+
+insert into table order_items select * from st_retail_db_txt.order_items;
+
+ describe formatted orders;
+
+******************Hive Functions*********************************************
+abs
+acos
+add_months
+aes_decrypt
+aes_encrypt
+and
+array
+array_contains
+ascii
+ashokvengala.incr
+ashokvengala.myconcat
+ashokvengala.myconcat0012
+ashokvengala.myfunc01
+asin
+assert_true
+atan
+avg
+base64
+between
+bin
+cardinality_violation
+case
+cbrt
+ceil
+ceiling
+coalesce
+collect_list
+collect_set
+compute_stats
+concat
+concat_ws
+context_ngrams
+conv
+corr
+cos
+count
+covar_pop
+covar_samp
+crc32
+create_union
+cume_dist
+current_database
+current_date
+current_timestamp
+current_user
+date_add
+date_format
+date_sub
+datediff
+day
+dayofmonth
+decode
+default.lower_letter
+default.string_reverse
+default.strip
+default.tosf
+degrees
+dense_rank
+div
+e
+elt
+encode
+ewah_bitmap
+ewah_bitmap_and
+ewah_bitmap_empty
+ewah_bitmap_or
+exp
+explode
+factorial
+field
+find_in_set
+first_value
+floor
+format_number
+from_unixtime
+from_utc_timestamp
+get_json_object
+greatest
+hash
+hex
+histogram_numeric
+hour
+if
+in
+in_file
+index
+initcap
+inline
+instr
+isnotnull
+isnull
+java_method
+json_tuple
+kbulia_db.lengt
+kbulia_db.trim
+kbulia_db.trimsc
+kbulia_db.trimscala
+lag
+last_day
+last_value
+lcase
+lead
+least
+length
+levenshtein
+like
+ln
+locate
+log
+log10
+log2
+lower
+lpad
+ltrim
+map
+map_keys
+map_values
+mask
+mask_first_n
+mask_hash
+mask_last_n
+mask_show_first_n
+mask_show_last_n
+max
+md5
+min
+minute
+month
+months_between
+named_struct
+negative
+next_day
+ngrams
+noop
+noopstreaming
+noopwithmap
+noopwithmapstreaming
+not
+ntile
+nvl
+or
+parse_url
+parse_url_tuple
+percent_rank
+percentile
+percentile_approx
+pi
+pmod
+posexplode
+positive
+pow
+power
+printf
+radians
+rand
+rank
+reflect
+reflect2
+regexp
+regexp_extract
+regexp_replace
+repeat
+reverse
+rlike
+round
+row_number
+rpad
+rtrim
+second
+sentences
+sha
+sha1
+sha2
+shiftleft
+shiftright
+shiftrightunsigned
+sign
+sin
+size
+sort_array
+soundex
+space
+split
+sqrt
+stack
+std
+stddev
+stddev_pop
+stddev_samp
+str_to_map
+struct
+substr
+substring
+sum
+tan
+to_date
+to_unix_timestamp
+to_utc_timestamp
+translate
+trim
+trunc
+ucase
+unbase64
+unhex
+unix_timestamp
+upper
+var_pop
+var_samp
+variance
+vihit.tofullname
+vihit.tosf
+walmart2.lower_letter
+weekofyear
+when
+windowingtablefunction
+xpath
+xpath_boolean
+xpath_double
+xpath_float
+xpath_int
+xpath_long
+xpath_number
+xpath_short
+xpath_string
+year
+*********************************************************************
+use st_retail_db_txt;
+
+create table customers (
+  customer_id int,
+  customer_fname varchar(45),
+  customer_lname varchar(45),
+  customer_email varchar(45),
+  customer_password varchar(45),
+  customer_street varchar(255),
+  customer_city varchar(45),
+  customer_state varchar(45),
+  customer_zipcode varchar(45)
+) row format delimited fields terminated by ','
+stored as textfile;
+
+load data local inpath '/data/retail_db/customers' into table customers;
+
+
+describe function substr;
+
+********************************Hive Functions****************************************
+
+describe function abs;
+
+hive (default)> select assert_true(1>2);
+OK
+Failed with exception java.io.IOException:org.apache.hadoop.hive.ql.metadata.HiveException: ASSERT_TRUE(): assertion failed.
+
+select avg(order_item_subtotal) from st_retail_db_txt.order_items;
+
+select concat_ws('|','ABC','DCF');
+OK
+ABC|DCF
+
+hive (default)> select concat('This',' is hell');
+OK
+This is hell
+
+hive (default)> select current_date;
+OK
+2018-11-29
+
+hive (default)> select to_date('2017-24-14 00:01');
+OK
+2018-12-14
+
+hive (default)> select to_date('2017-14-14 00:01');
+OK
+2018-02-14
+
+hive (default)> select to_date('2017-08-01 00:01:00');
+OK
+2017-08-01
+
+hive (default)> select to_date('20-24-2020 00:01');
+OK
+0027-06-12
+
+hive (default)> select weekofyear(current_date);
+OK
+48
+
+select case order_item_quantity
+ when 1 then 'Only one'
+  else 'more items'
+ end
+  from order_items limit 10;
+
+
+select cast(year(order_date) as int) from orders limit 10
+                       > ;
+
+**************************Hive Joins**************************************
+select c.*,o.*
+from customers c,orders o
+where c.customer_id=o.order_customer_id
+limit 10;
+
+select c.*,o.*
+from customers c join orders o
+on c.customer_id=o.order_customer_id
+limit 10;
+
+
+select c.*,o.*
+from customers c left outer join orders o
+on c.customer_id=o.order_customer_id
+where o.order_customer_id is null
+limit 10;
+
+select count(*)
+from customers c left outer join orders o
+on c.customer_id=o.order_customer_id
+where o.order_customer_id is null;
+
+#this does not work in hive
+select count(1)
+from customers c ,orders o
+where c.customer_id(+) = o.order_customer_id
+and o.order_customer_id is null;
+
+select count(1)
+from customers
+where customer_id not in
+(select order_customer_id
+from orders)
+
+
+select count(1),order_status
+from orders
+group by order_status;
+
+
+create table product(
+product_id int,
+product_category_id int,
+product_name string,
+product_description string,
+product_price double,
+product_image string
+)
+row format delimited fields terminated by ',';
+
+load data local inpath '/data/retail_db/products/' into table product;
+
+#daily revenue of products order by date asc rev desc date,rev,product name
+
+select o.order_date,
+sum(oi.order_item_subtotal) Revenue,
+p.product_name
+from product p ,
+orders o,
+order_items oi
+where p.product_id = oi.order_item_product_id
+and o.order_id = oi.order_item_order_id
+group by o.order_date,p.product_name
+order by o.order_date,Revenue
+limit 20;
+
+select o.order_date,
+sum(oi.order_item_subtotal) Revenue,
+p.product_name
+from product p ,
+orders o,
+order_items oi
+where p.product_id = oi.order_item_product_id
+and o.order_id = oi.order_item_order_id
+group by o.order_date,p.product_name
+order by o.order_date,Revenue desc
+limit 50;
+
+#sort by
+select o.order_date,
+sum(oi.order_item_subtotal) Revenue,
+p.product_name
+from product p ,
+orders o,
+order_items oi
+where p.product_id = oi.order_item_product_id
+and o.order_id = oi.order_item_order_id
+group by o.order_date,p.product_name
+sort by o.order_date,Revenue desc
+limit 50;
+
+#distribute without sort shows orderdate in randon order 
+select o.order_date,
+sum(oi.order_item_subtotal) Revenue,
+p.product_name
+from product p ,
+orders o,
+order_items oi
+where p.product_id = oi.order_item_product_id
+and o.order_id = oi.order_item_order_id
+group by o.order_date,p.product_name
+distribute by o.order_date sort by Revenue desc
+limit 50;
+
+#distribute without sort shows orderdate in randon order 
+select o.order_date,
+sum(oi.order_item_subtotal) Revenue,
+p.product_name
+from product p ,
+orders o,
+order_items oi
+where p.product_id = oi.order_item_product_id
+and o.order_id = oi.order_item_order_id
+group by o.order_date,p.product_name
+distribute by o.order_date sort by o.order_date,Revenue desc
+limit 50;
+
+#Analytical Functions
+
+select o.order_date,o.order_status,
+sum(oi.order_item_subtotal) over (partition by o.order_status order by o.order_date),oi.order_item_subtotal,o.order_id,oi.order_item_id
+from
+orders o,
+order_items oi
+where o.order_id = oi.order_item_order_id
+limit 50;
+
+select o.order_date,
+sum(oi.order_item_subtotal) over (partition by o.order_id),
+oi.order_item_subtotal,
+o.order_id,
+oi.order_item_id
+from
+orders o,
+order_items oi
+where o.order_id = oi.order_item_order_id
+limit 50;
+
+select o.order_date,
+min(oi.order_item_subtotal) over (partition by o.order_id),
+oi.order_item_subtotal,
+o.order_id,
+oi.order_item_id
+from
+orders o,
+order_items oi
+where o.order_id = oi.order_item_order_id
+limit 50;
+
+select o.order_date,
+count(oi.order_item_subtotal) over (partition by o.order_id),
+oi.order_item_subtotal,
+o.order_id,
+oi.order_item_id
+from
+orders o,
+order_items oi
+where o.order_id = oi.order_item_order_id
+limit 50;
+
+
+oi.order_item_subtotal/round(sum(oi.order_item_subtotal) over (partition by o.order_id), 2) pct_revenue,
+round(avg(oi.order_item_subtotal) over (partition by o.order_id), 2) avg_revenue
+
+select o.order_id, o.order_date, oi.order_item_subtotal, 
+round(sum(oi.order_item_subtotal) over (partition by o.order_id), 2) order_revenue
+
+from orders o join order_items oi
+on o.order_id = oi.order_item_order_id
+where o.order_status in ('COMPLETE', 'CLOSED')
+limit 10;
