@@ -1,0 +1,3 @@
+flume-ng agent --name a1 --conf-file /home/shwetatanwar13/flume_demo/example.conf
+
+Created serverSocket:sun.nio.ch.ServerSocketChannelImpl[/127.0.0.1:444
