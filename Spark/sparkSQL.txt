@@ -1,0 +1,127 @@
+sqlContext.sql("use st_retail_db_txt")
+sqlContext.sql("show tables").show()
+sqlContext.sql("drop table product").show()
+sqlContext.sql("select * from product limit 5").show()
+from pyspark.sql import row
+from pyspark.sql.types import StructType,StructField,StringType,IntegerType,FloatType
+
+schema1=StructType([StructField("product_id",IntegerType(),True),
+StructField("product_category_id",IntegerType(),True),StructField("product_name",StringType(),True),StructField("product_description",StringType(),True),StructField("product_price",FloatType(),True),StructField("product_image",StringType(),True)])
+
+productFile=open("/data/retail_db/products/part-00000")
+
+rdd1=sc.parallelize(productFile)
+rdd1.count()
+rdd=sc.textFile("/data/retail_db/products")
+productDF=sqlContext.createDataFrame(rdd1,schema1)
+
+productsRaw = open("/data/retail_db/products/part-00000").read().splitlines()
+rdd=sc.parallelize(productsRaw)
+rdd=rdd.map(lambda x:(int(x.split(',')[0]),
+int(x.split(',')[1]),
+x.split(',')[2],
+x.split(',')[3],
+float(x.split(',')[4]),
+x.split(',')[5]
+))
+
+
+
+rdd.take(5)
+rdd.count()
+from pyspark.sql.types import StructType,StructField,StringType,IntegerType,FloatType
+
+schema1=StructType([StructField("product_id",IntegerType(),True),
+StructField("product_category_id",IntegerType(),True),StructField("product_name",StringType(),True),StructField("product_description",StringType(),True),StructField("product_price",FloatType(),True),StructField("product_image",StringType(),True)])
+
+schema2=StructType([StructField("product_id",IntegerType(),True),StructField("product_name",StringType(),True)])
+
+
+productDF=sqlContext.createDataFrame(rdd,schema1)
+productDF.registerTempTable('product')
+
+productDF.select('product_id','product_name').registerTempTable("Products")
+
+
+for i in rdd.take(10):print(i)
+
+productDF=sqlContext.createDataFrame(rdd,schema1)
+productDF.show()
+productDF.select('product_id','product_name').registerTempTable("Products")
+productDF=sqlContext.createDataFrame(rdd,schema1)
+productDF.registerTempTable('product')
+
+#2nd method
+productsRaw = open("/data/retail_db/products/part-00000")
+rdd=sc.parallelize(productsRaw)
+
+sqlContext.sql("select * from product").show()
+
+sqlContext.sql("select * from products limit 5").show()
+
+sqlContext.sql("select o.order_date, \
+sum(oi.order_item_subtotal) Revenue, \
+p.product_name \
+from product p, \
+orders o, \
+order_items oi \
+where p.product_id=oi.order_item_product_id \
+and o.order_id = oi.order_item_order_id \
+group by o.order_date,p.product_name").show()
+
+sqlContext.sql("describe order_items").show()
+
+
+sqlContext.sql("SELECT o.order_date, p.product_name,sum(oi.order_item_subtotal) daily_revenue_per_product \
+FROM orders o JOIN order_items oi \
+ON o.order_id = oi.order_item_order_id \
+JOIN product1 p \
+ON p.product_id = oi.order_item_product_id \
+WHERE o.order_status IN ('COMPLETE', 'CLOSED') \
+GROUP BY o.order_date, p.product_name \
+ORDER BY o.order_date, daily_revenue_per_product DESC").show()
+
+sqlContext.sql("SELECT o.order_date, p.product_name \
+FROM orders o JOIN order_items oi \
+ON o.order_id = oi.order_item_order_id \
+JOIN product1 p \
+ON p.product_id = oi.order_item_product_id \
+WHERE o.order_status IN ('COMPLETE', 'CLOSED') \
+GROUP BY o.order_date, p.product_name \
+").show()
+
+sqlContext.sql("select order_id from orders order by order_id desc limit 10")
+
+
+
+select o.order_date, 
+sum(oi.order_item_subtotal) Revenue, 
+p.product_name 
+from products p, 
+orders o, 
+order_items oi 
+where p.product_id=oi.order_item_product_id 
+and o.order_id = oi.order_item_order_id 
+group by o.order_date,p.product_name;
+
+
+
+from pyspark.sql import Row
+productsRaw = open("/data/retail_db/products/part-00000").read().splitlines()
+productsRDD = sc.parallelize(productsRaw)
+productsDF = productsRDD.\
+map(lambda p: Row(product_id=int(p.split(",")[0]), product_name=p.split(",")[2])).\
+toDF()
+productsDF.registerTempTable("products")
+sqlContext.sql("select * from product where product_description !=''").show()
+
+
+productsRaw = open("/data/retail_db/products/part-00000")
+rdd=sc.parallelize(productsRaw)
+rdd=rdd.map(lambda x:(int(x.split(',')[0]),
+x.split(',')[2],
+))
+schema2=StructType([StructField("product_id",IntegerType(),True),StructField("product_name",StringType(),True)])
+
+productDF=sqlContext.createDataFrame(rdd,schema2)
+productDF.registerTempTable('product1')

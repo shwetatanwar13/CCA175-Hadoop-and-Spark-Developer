@@ -1,0 +1,289 @@
+sqlContext.read.json
+sqlContext.read.load
+sqlContext.read.format('json').load(
+hiveContext.read.orc(
+sqlContext.read.parquet(
+df.registerTempTable(
+sqlContext.read.text(
+
+df.write.format('json').save(os.path.join(tempfile.mkdtemp(), 'data')) --experimental in 1.6.3
+
+df.write.json(os.path.join(tempfile.mkdtemp(), 'data'))
+
+df.write.mode('append').parquet(os.path.join(tempfile.mkdtemp(), 'data'))
+
+orc_df.write.orc(os.path.join(tempfile.mkdtemp(), 'data'))
+df.write.parquet(os.path.join(tempfile.mkdtemp(), 'data'))
+df.write.format("com.databricks.spark.csv").save(path)
+save?
+hdfs dfs -rm -R /user/shwetatanwar13/solutions/
+
+text(path)
+Saves the content of the DataFrame in a text file at the specified path.
+
+The DataFrame must have only one column that is of string type. Each row becomes a new line in the output file.
+
+selectExpr(self, *expr) method of pyspark.sql.dataframe.DataFrame instance
+    Projects a set of SQL expressions and returns a new :class:`DataFrame`.
+    
+    This is a variant of :func:`select` that accepts SQL expressions.
+    
+    >>> df.selectExpr("age * 2", "abs(age)").collect()
+    [Row((age * 2)=4, abs(age)=2), Row((age * 2)=10, abs(age)=5)]:
+
+finalRDD.selectExpr("customer_lname+customer_fname").show()
+
+pyspark --packages com.databricks:spark-csv_2.10:1.4.0
+
+df.write.format("com.databricks.spark.csv").option("header", "true").save("file.csv")
+val df = sqlContext.read.format("com.databricks.spark.csv").option("header", "true").option("inferSchema", "true").load("file.csv")
+
+df.select("year", "model").write()
+    .format("com.databricks.spark.csv")
+    .option("header", "true")
+    .option("codec", "org.apache.hadoop.io.compress.GzipCodec")
+    .save("newcars.csv");
+
+hdfs dfs -cat /user/shwetatanwar13/solutions/solution01/crimes_by_type_by_month/
+
+sourcefile.write.format("text").option("codec", "org.apache.hadoop.io.compress.GzipCodec").save("/user/shwetatanwar13/solutions/solution01/crimes_by_type_by_month")
+*****************************************************************************************************
+inspark 2.4
+
+spark.read.csv('python/test_support/sql/ages.csv')
+
+By default em on 8088
+resultDF.map(lambda r : r[0]+", “+r[1]).coalesce(1).saveAsTextFile(”/user/smakireddy/solutions/DF-2/inactive_customers")
+
+
+spark.io.compression.codec	lz4	
+
+The codec used to compress internal data such as RDD partitions, event log, broadcast variables and shuffle outputs. By default, Spark provides three codecs: lz4, lzf, and snappy. You can also use fully qualified class names to specify the codec, e.g. org.apache.spark.io.LZ4CompressionCodec, org.apache.spark.io.LZFCompressionCodec, and org.apache.spark.io.SnappyCompressionCodec.
+
+spark.executor.cores
+	
+1 in YARN mode, all the available cores on the worker in standalone and Mesos coarse-grained modes.
+
+The number of cores to use on each executor. In standalone and Mesos coarse-grained modes, setting this parameter allows an application to run multiple executors on the same worker, provided that there are enough cores on that worker. Otherwise, only one executor per application will run on each worker.
+
+spark.executor.memory	1g	
+Amount of memory to use per executor process (e.g. 2g, 8g).Amount of memory to use per executor process (e.g. 2g, 8g).
+
+
+sqlContext.setConf("spark.sql.shuffle.partitions", "1")
+coalesce(self, numPartitions)
+hdfs dfs -tail /user/shwetatanwar13/solutions/solutions02/inactive_customers/part-r-00000-cb7a17f5-485f-4413-8b3c-cc4752c89707
+count(self)
+ |      Returns the number of rows in this :class:`DataFrame`.
+
+describe(self, *cols)
+ |      Computes statistics for numeric columns.
+
+
+distinct(self)
+ |      Returns a new :class:`DataFrame` containing the distinct rows in this :class:`DataFrame`.
+ df.write.csv(os.path.join(tempfile.mkdtemp(), 'data'))
+
+
+explain(self, extended=False)
+ |      Prints the (logical and physical) plans to the console for debugging purpose.
+
+
+
+filter(self, condition)
+ |      Filters rows using the given condition.
+
+
+flatMap(self, f)
+ |      Returns a new :class:`RDD` by first applying the ``f`` function to each :class:`Row`,
+ |      and then flattening the results.
+
+foreach(self, f)
+ |      Applies the ``f`` function to all :class:`Row` of this :class:`DataFrame`.
+
+
+groupBy(self, *cols)
+ |      Groups the :class:`DataFrame` using the specified columns,
+
+head(self, n=None)
+ |      Returns the first ``n`` rows.
+
+
+
+insertInto(self, tableName, overwrite=False)
+ |      Inserts the contents of this :class:`DataFrame` into the specified table.
+
+
+intersect(self, other)
+ |      Return a new :class:`DataFrame` containing rows only in
+ |      both this frame and another frame.
+
+join(self, other, on=None, how=None)
+ |      Joins with another :class:`DataFrame`, using the given join expression.
+
+
+map(self, f)
+ |      Returns a new :class:`RDD` by applying a the ``f`` function to each :class:`Row`.
+ |      
+ |      This is a shorthand for ``df.rdd.map()``.
+ |      
+ |      >>> df.map(lambda p: p.name).collect()
+ |      [u'Alice', u'Bob']
+
+
+mapPartitions(self, f, preservesPartitioning=False)
+ |      Returns a new :class:`RDD` by applying the ``f`` function to each partition.
+
+
+orderBy = sort(self, *cols, **kwargs
+
+
+
+registerTempTable(self, name)
+ |      Registers this RDD as a temporary table using the given name.
+
+subtract(self, other)
+ |      Return a new :class:`DataFrame` containing rows in this frame
+ |      but not in another frame.
+ |      
+ |      This is equivalent to `EXCEPT` in SQL.
+
+toDF(self, *cols)
+ |      Returns a new class:`DataFrame` that with new specified column names
+ |      
+ |      :param cols: list of new column names (string)
+ |      
+ |      >>> df.toDF('f1', 'f2').collect()
+ |      [Row(f1=2, f2=u'Alice'), Row(f1=5, f2=u'Bob')]
+
+
+toJSON(self, use_unicode=True)
+ |      Converts a :class:`DataFrame` into a :class:`RDD` of string.
+ |      
+ |      Each row is turned into a JSON document as one element in the returned RDD.
+ |      
+ |      >>> df.toJSON().first()
+ |      u'{"age":2,"name":"Alice"}'
+
+
+withColumn(self, colName, col)
+ |      Returns a new :class:`DataFrame` by adding a column or replacing the
+ |      existing column that has the same name.
+ |      
+ |      :param colName: string, name of the new column.
+ |      :param col: a :class:`Column` expression for the new column.
+ |      
+ |      >>> df.withColumn('age2', df.age + 2).collect()
+ |      [Row(age=2, name=u'Alice', age2=4), Row(age=5, name=u'Bob', age2=7)]
+
+save(self, path=None, source=None, mode='error', **options)
+ |      Saves the contents of the :class:`DataFrame` to a data source.
+ |      
+ |      .. note:: Deprecated in 1.4, use :func:`DataFrameWriter.save` instead.
+
+write
+ |      Interface for saving the content of the :class:`DataFrame` out into external storage.
+ |      
+ |      :return: :class:`DataFrameWriter`
+ |      
+
+ format(self, source)
+ |      Specifies the underlying output data source.
+ |      
+ |      :param source: string, name of the data source, e.g. 'json', 'parquet'.
+ |      
+ |      >>> df.write.format('json').save(os.path.join(tempfile.mkdtemp(), 'data'))
+
+insertInto(self, tableName, overwrite=False)
+ |      Inserts the content of the :class:`DataFrame` to the specified table.
+ |      
+ |      It requires that the schema of the class:`DataFrame` is the same as the
+ |      schema of the table.
+ |      
+ |      Optionally overwriting any existing data.
+
+json(self, path, mode=None)
+ |      Saves the content of the :class:`DataFrame` in JSON format at the specified path.
+ |      
+ |      :param path: the path in any Hadoop supported file system
+ |      :param mode: specifies the behavior of the save operation when data already exists.
+ |      
+ |          * ``append``: Append contents of this :class:`DataFrame` to existing data.
+ |          * ``overwrite``: Overwrite existing data.
+ |          * ``ignore``: Silently ignore this operation if data already exists.
+ |          * ``error`` (default case): Throw an exception if data already exists.
+ |      
+ |      >>> df.write.json(os.path.join(tempfile.mkdtemp(), 'data'))
+
+mode(self, saveMode)
+ |      Specifies the behavior when data or table already exists.
+ |      
+ |      Options include:
+ |      
+ |      * `append`: Append contents of this :class:`DataFrame` to existing data.
+ |      * `overwrite`: Overwrite existing data.
+ |      * `error`: Throw an exception if data already exists.
+ |      * `ignore`: Silently ignore this operation if data already exists.
+ |      
+ |      >>> df.write.mode('append').parquet(os.path.join(tempfile.mkdtemp(), 'data'))
+
+
+orc(self, path, mode=None, partitionBy=None)
+ |      Saves the content of the :class:`DataFrame` in ORC format at the specified path.
+ |      
+ |      ::Note: Currently ORC support is only available together with
+ |      :class:`HiveContext`.
+ |      
+ |      :param path: the path in any Hadoop supported file system
+ |      :param mode: specifies the behavior of the save operation when data already exists.
+ |      
+ |          * ``append``: Append contents of this :class:`DataFrame` to existing data.
+ |          * ``overwrite``: Overwrite existing data.
+ |          * ``ignore``: Silently ignore this operation if data already exists.
+ |          * ``error`` (default case): Throw an exception if data already exists.
+ |      :param partitionBy: names of partitioning columns
+ |      
+ |      >>> orc_df = hiveContext.read.orc('python/test_support/sql/orc_partitioned')
+ |      >>> orc_df.write.orc(os.path.join(tempfile.mkdtemp(), 'data'))
+
+parquet(self, path, mode=None, partitionBy=None)
+ |      Saves the content of the :class:`DataFrame` in Parquet format at the specified path.
+ |      
+ |      :param path: the path in any Hadoop supported file system
+ |      :param mode: specifies the behavior of the save operation when data already exists.
+ |      
+ |          * ``append``: Append contents of this :class:`DataFrame` to existing data.
+ |          * ``overwrite``: Overwrite existing data.
+ |          * ``ignore``: Silently ignore this operation if data already exists.
+ |          * ``error`` (default case): Throw an exception if data already exists.
+ |      :param partitionBy: names of partitioning columns
+ |      
+ |      >>> df.write.parquet(os.path.join(tempfile.mkdtemp(), 'data'))
+ |      
+
+save(self, path=None, format=None, mode=None, partitionBy=None, **options)
+ |      Saves the contents of the :class:`DataFrame` to a data source.
+ |      
+ |      The data source is specified by the ``format`` and a set of ``options``.
+ |      If ``format`` is not specified, the default data source configured by
+ |      ``spark.sql.sources.default`` will be used.
+ |      
+ |      :param path: the path in a Hadoop supported file system
+ |      :param format: the format used to save
+ |      :param mode: specifies the behavior of the save operation when data already exists.
+ |      
+ |          * ``append``: Append contents of this :class:`DataFrame` to existing data.
+ |          * ``overwrite``: Overwrite existing data.
+ |          * ``ignore``: Silently ignore this operation if data already exists.
+ |          * ``error`` (default case): Throw an exception if data already exists.
+ |      :param partitionBy: names of partitioning columns
+ |      :param options: all other string options
+ |      
+ |      >>> df.write.mode('append').parquet(os.path.join(tempfile.mkdtemp(), 'data'))
+
+
+ text(self, path)
+ |      Saves the content of the DataFrame in a text file at the specified path.
+ |      
+ |      The DataFrame must have only one column that is of string type.
+ |      Each row becomes a new line in the output file.
