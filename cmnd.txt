@@ -1,0 +1,217 @@
+spark-submit --master yarn /home/shwetatanwar13/department_count.py gw02.itversity.com 19999 /user/shwetatanwar13/department_count/dep
+
+pyspark --master yarn --executor-memory 1G
+
+#cloudera
+
+spark-submit department_count.py localhost 9999 /user/cloudera/department_count
+
+sh tail_logs.sh | nc -lk gw02.itversity.com 19999
+
+ spark-streaming-flume_2.10-1.6.3.jar
+spark-streaming-flume-sink_2.10-1.6.3.jar
+
+scala-library-2.11.12.jar
+commons-lang3-3.5.jar
+
+sqlContext.sql("SET spark.sql.parquet.compression.codec=snappy")
+
+sqlContext.setConf('spark.sql.avro.compression.codec', 'snappy')
+
+
+spark-submit --master yarn \
+--conf spark.ui.port=12890 \
+--jars "/usr/hdp/2.5.0.0-1245/spark/lib/spark-streaming-flume_2.10-1.6.2.jar,/usr/hdp/2.5.0.0-1245/spark/lib/spark-streaming-flume-sink_2.10-1.6.2.jar,/usr/hdp/2.5.0.0-1245/flume/lib/flume-ng-sdk-1.5.2.2.5.0.0-1245.jar" \
+flume_dept_count.py \
+gw02.itversity.com 8123 /user/shwetatanwar13/department_count/flume_dep
+
+wr.sinks.spark.type = org.apache.spark.streaming.flume.sink.SparkSink
+wr.sinks.spark.hostname = gw02.itversity.com
+wr.sinks.spark.port = 
+
+hdfs dfs -rm -R /user/shwetatanwar13/department_count/flume_dep
+
+spark-submit --master yarn \
+--conf spark.ui.port=12890 \
+--jars "/usr/hdp/2.6.5.0-292/flume/lib/spark-streaming-flume_2.10-1.6.3.jar,/usr/hdp/2.6.5.0-292/flume/lib/spark-streaming-flume-sink_2.10-1.6.3.jar,/usr/hdp/2.6.5.0-292/flume/lib/flume-ng-sdk-1.5.2.2.6.5.0-292.jar" \
+flume_dept_count.py \
+gw02.itversity.com 8123 /user/shwetatanwar13/department_count/flume_dep
+
+
+wn01.itversity.com:6667,wn02.itversity.com:6667,wn03.itversity.com:6667,wn04.itversity.com:6667
+
+
+
+kafka-console-consumer.sh --bootstrap-server wn01.itversity.com:6667,wn02.itversity.com:6667,wn03.itversity.com:6667,wn04.itversity.com:6667 --topic fltokf --from-beginning
+export PATH=$PATH:/usr/hdp/2.6.5.0-292/kafka/bin
+
+
+spark-submit --master yarn \
+--conf spark.ui.port=12890 \
+--jars "/usr/hdp/2.6.5.0-292/kafka/libs/spark-streaming-kafka_2.10-1.6.3.jar,/usr/hdp/2.6.5.0-292/kafka/libs/kafka_2.11-1.0.0.2.6.5.0-292.jar,/usr/hdp/2.6.5.0-292/kafka/libs/metrics-core-2.2.0.jar" \
+Kafka_dept_count.py \
+/user/shwetatanwar13/department_count/Kafka_count
+
+
+spark-submit --master yarn \
+--conf spark.ui.port=12890 \
+--jars "/usr/hdp/2.6.5.0-292/kafka/libs/spark-streaming-kafka_2.10-1.6.3.jar" \
+Kafka_dept_count.py \
+/user/shwetatanwar13/department_count/Kafka_count
+
+spark-submit --master yarn \
+--conf spark.ui.port=12890 \
+--jars "/usr/hdp/2.5.0.0-1245/kafka/libs/spark-streaming-kafka_2.10-1.6.2.jar,/usr/hdp/2.6.5.0-292/kafka/libs/kafka_2.11-1.0.0.2.6.5.0-292.jar,/usr/hdp/2.6.5.0-292/kafka/libs/metrics-core-2.2.0.jar" \
+Kafka_dept_count.py \
+/user/shwetatanwar13/department_count/Kafka_count
+
+
+
+
+
+***************************Imp commads*******************************
+
+sekhar.m
+Jun 14
+Some of my notes (important points are given below). I hope this helps for folks who are preparing for CCA175 based on pyspark:
+
+##Reading/writing/compressing files:
+
+#To read any text file (compressed / uncompressed into an RDD)
+rdd = sc.textFile("…path")
+
+#To write any text file to HDFS:
+rdd.saveAsTextFile("…path",compressionClassCodec=“org.apache…”)
+By default compressionClassCodec=None. This means no compression.
+
+See the /etc/hadoop/conf/core-site.xml and search for codec to find available compression codec classes.
+
+#To read any sequence file (compressed / uncompressed into an RDD)
+rdd = sc.sequenceFile("…path")
+
+#To write an RDD into a sequence file:
+rdd.saveAsSequenceFile("…path",compressionCodecClass=“org.apache…”)
+
+#To read a parquet file (compressed/uncompressed):
+df = sqlContext.read.parquet("…path")
+
+#To read a orc file (compressed/uncompressed):
+df = sqlContext.read.orc("…path")
+
+#To read a json file (compressed/uncompressed):
+df = sqlContext.read.json("…path")
+
+#To read a text file (compressed/uncompressed) to a data frame:
+df = sqlContext.read.text("…path")
+
+#To read an avro file (compressed/uncompressed):
+df = sqlContext.load("…path",“com.databricks.spark.avro”)
+spark.sql("SET -v").show(n=200, truncate=False)
+
+sqlContext.getAllConfs
+
+#To write data frame in parquet, avro, json, orc with/without compression
+################################
+#Set the parquet compression #
+################################
+sqlContext.setConf("spark.sql.parquet.compression.codec","gzip")
+#In place of gzip, use “snappy”, “lzo”, “uncompressed” or “gzip”
+
+#######################################
+#Write the file now in parquet format #
+#######################################
+df.write.parquet("…path")
+
+#######################
+#Set avro compression #
+#######################
+sqlContext.setConf(“spark.sql.avro.compression.codec”,“snappy”)
+#Can be “snappy”, “deflate” or “uncompressed”
+
+###########################
+#Write in avro format now #
+###########################
+df.save("…path",“com.databricks.spark.avro”)
+
+#########################
+#Set orc compression ##
+#########################
+#I think by default the data is compressed by snappy format for ORC
+df.write.orc("…path")
+
+##########################################
+#Write the JSON file without compression #
+##########################################
+#Without compression #
+##########################################
+df.toJSON().saveAsTextFile("…path")
+
+####################
+#With compression #
+####################
+df.toJSON().saveAsTextFile("…path", compressionClassCodec=“org…”)
+
+################################################
+#Write RDD and DF with desired number of partitions ##
+################################################
+
+#For RDD
+rdd.coalesce(2).saveAsTextFile("…path",compressionCodecClass="…")
+
+#For DF
+final_df.rdd.coalesce(2).toDF().write.parquet(“problem1”,mode=“overwrite”)
+
+#DF write mode:
+df.write.parquet(“problem1”,mode=“overwrite”,mode=“overwrite”)
+#mode can be “overwrite” or “append” or “error”
+
+##Some exercises (Not Arun’s blog exercises. Will post those solutions later):
+
+#Read the data from /public/retail_db/orders into an RDD
+rdd1 = sc.textFile("/public/retail_db/orders")
+
+#Save the RDD as text file with snappy compression
+rdd1.saveAsTextFile(“orders_snappy/”,compressionCodecClass=“org.apache.hadoop.io.compress.SnappyCodec”)
+
+#Read the snappy compressed data to another data frame
+#First read to a data frame
+rdd2 = sc.textFile(“orders_snappy/*”)
+df = rdd2.map(lambda x: x.split(",")).map(lambda x: (int(x[0]),x[1],int(x[2]),x[3])).toDF([“orderID”,“orderTime”,“custId”,“Status”])
+
+#Save the data as a sequence file with compression (snappy)
+#To save as sequence file, you must have a key-value pair RDD.
+rdd2.keyBy(lambda x: int(x[0])).saveAsSequenceFile(“orders_sequence/”,compressionCodecClass=“org.apache.hadoop.io.compress.SnappyCodec”)
+
+#Read the data back from sequence file into another RDD
+rdd3 = sc.sequenceFile(“orders_sequence/”)
+
+#Create orders data frame
+orders_df = rdd1.map(lambda x: x.split(",")).map(lambda x: (int(x[0]),x[1],int(x[2]),x[3])).toDF([“orderId”,“orderTime”,“custID”,“orderStatus”])
+
+#Save the file as avro with snappy compression
+sqlContext.setConf(“spark.sql.avro.compression.codec”,“snappy”)
+
+orders_df.save(“orders_avro/”,“com.databricks.spark.avro”)
+
+#Read back the saved data frame again
+df_new = sqlContext.load(“orders_avro/”,“com.databricks.spark.avro”)
+
+#Create a hive table referencing the avro file (compressed)
+#Only ORC can be compressed.
+
+use sekhar_db;
+
+create table orders_avro(order_id int, order_time timestamp, cust_id int, order_status string) stored as AVRO;
+
+orders_df.registerTempTable(“orders_df”)
+
+sqlContext.sql(""“INSERT into sekhar_db.orders select * from orders_df”"")
+
+#Query the hive table
+SELECT * from sekhar_db.orders_avro
+
+#CSV
+selectedData.write
+    .format("com.databricks.spark.csv")
+    .option("header", "true")
+    .save("newcars.csv")

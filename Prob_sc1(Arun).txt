@@ -1,0 +1,143 @@
+1. Using sqoop, import orders table into hdfs to folders /user/cloudera/problem1/orders. File should be loaded as Avro File and use snappy compression
+Using sqoop, import order_items  table into hdfs to folders /user/cloudera/problem1/order-items. Files should be loaded as avro file and use snappy compression
+
+sqoop-import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table orders \
+--as-avrodatafile \
+--target-dir '/user/shwetatanwar13/problem1/orders' \
+--compress \
+--compression-codec org.apache.hadoop.io.compress.SnappyCodec
+
+2. Using sqoop, import order_items  table into hdfs to folders /user/cloudera/problem1/order-items. Files should be loaded as avro file and use snappy compression
+
+sqoop-import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table order_items \
+--target-dir /user/shwetatanwar13/problem1/order-items \
+--as-avrodatafile \
+--compression-codec org.apache.hadoop.io.compress.SnappyCodec
+
+core-site.xml
+<property>
+      <name>io.compression.codecs</name>
+      <value>org.apache.hadoop.io.compress.GzipCodec,org.apache.hadoop.io.compress.DefaultCodec,org.apache.hadoop.io.compress.SnappyCodec</value>
+</property>
+
+#to check if snappy compression worked
+sqoop-import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table orders \
+--as-avrodatafile \
+--target-dir '/user/shwetatanwar13/problem1/orders_temp'
+
+ hdfs dfs -ls /user/shwetatanwar13/problem1/order-items
+
+3.Using Spark Scala load data at /user/cloudera/problem1/orders and /user/cloudera/problem1/orders-items items as dataframes. 
+
+pyspark \
+--master yarn \
+--conf spark.ui.port=12890 \
+--packages com.databricks:spark-avro_2.10:2.0.1
+
+orderitemDF = sqlContext.read.load("/user/shwetatanwar13/problem1/order-items","com.databricks.spark.avro")
+orderitemDF.show()
+
+4.Expected Intermediate Result: Order_Date , Order_status, total_orders, total_amount. In plain english, please find total orders and total amount per status per day. The result should be sorted by order date in descending, order status in ascending and total amount in descending and total orders in ascending. Aggregation should be done using below methods. However, sorting can be done using a dataframe or RDD. Perform aggregation in each of the following ways
+a). Just by using Data Frames API - here order_date should be YYYY-MM-DD format
+b). Using Spark SQL  - here order_date should be YYYY-MM-DD format
+c). By using combineByKey function on RDDS -- No need of formatting order_date or total_amount
+
+
+
+
+ordersDF = sqlContext.read.load("/user/shwetatanwar13/problem1/orders","com.databricks.spark.avro")
+ordersDF.registerTempTable("orders")
+orderitemDF.registerTempTable("order_items")
+
+
+resultRDD=sqlContext.sql("select from_unixtime(o.order_date/1000,'YYYY-MM-DD') order_date, \
+o.order_status, \
+count(*) total_orders, \
+sum(oi.order_item_subtotal) total_amount \
+from order_items oi, orders o \
+where oi.order_item_order_id = o.order_id \
+group by order_date, o.order_status \
+order by order_date desc, order_status,total_amount desc,total_orders")
+
+
+#Below is the correct way to do
+
+resultRDD=sqlContext.sql("select to_date(from_unixtime(order_date/1000)) order_date, \
+o.order_status, \
+count(*) total_orders, \
+sum(oi.order_item_subtotal) total_amount \
+from order_items oi, orders o \
+where oi.order_item_order_id = o.order_id \
+group by order_date, o.order_status \
+order by order_date desc, order_status,total_amount desc,total_orders").show()
+
+resultRDD.show()
+sqlContext.sql("describe orders").show()
+
+5.Store the result as parquet file into hdfs using gzip compression under folder
+
+sqlContext.setConf("spark.sql.parquet.compression.codec","gzip")
+resultRDD.write.parquet("/user/shwetatanwar13/problem1/result4a-gzip") 
+
+hdfs dfs -ls /user/shwetatanwar13/problem1/result4a-gzip
+
+hdfs dfs -rm -R /user/shwetatanwar13/problem1/result4a-gzip
+
+sqlContext.setConf("spark.sql)
+
+6.Store the result as parquet file into hdfs using snappy compression under folder
+
+sqlContext.setConf("spark.sql.parquet.compression.codec","snappy")
+#this also caused 10 files to be created
+sqlContext.sql("set spark.sql.shuffle.partitions=10")
+spark.sql("SET -v").show(n=200, truncate=False)
+
+resultRDD.write.parquet("/user/shwetatanwar13/problem1/result4a-snappy") 
+hdfs dfs -ls /user/shwetatanwar13/problem1/result4a-snappy
+
+7.Store the result as CSV file into hdfs using No compression under folder
+
+resultRDD=sqlContext.sql("select concat(to_date(from_unixtime(order_date/1000)),',',o.order_status,',',count(*),',',sum(oi.order_item_subtotal)) \
+from order_items oi, orders o \
+where oi.order_item_order_id = o.order_id \
+group by to_date(from_unixtime(order_date/1000)), o.order_status \
+order by to_date(from_unixtime(order_date/1000)) desc, order_status,sum(oi.order_item_subtotal) desc,count(*)")
+
+resultRDD.show()
+
+resultRDD.coalesce(1).write.text("/user/shwetatanwar13/problem1/result4a-csv")
+
+hdfs dfs -ls  /user/shwetatanwar13/problem1/result4a-csv
+
+8.create a mysql table named result and load data from /user/cloudera/problem1/result4a-csv to mysql table named result 
+
+sqoop eval \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--query "create table result_st(Order_Date date,Order_status varchar(20), total_orders float,total_amount float)"
+
+sqoop export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--table result_st \
+--export-dir /user/shwetatanwar13/problem1/result4a-csv
+
+sqoop eval \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--query "select * from result_st limit 10"
