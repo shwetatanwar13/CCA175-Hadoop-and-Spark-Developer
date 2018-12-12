@@ -1,0 +1,106 @@
+1. Using sqoop copy data available in mysql products table to folder /user/cloudera/products on hdfs as text file. columns should be delimited by pipe '|'
+
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table products \
+--target-dir /user/shwetatanwar13/products \
+--fields-terminated-by '|'
+
+hdfs dfs -ls /user/shwetatanwar13/products
+
+2.move all the files from /user/cloudera/products folder to /user/cloudera/problem2/products folder
+
+hdfs dfs -mkdir -p /user/shwetatanwar13/problem2/products
+hdfs dfs -mv /user/shwetatanwar13/products /user/shwetatanwar13/problem2/
+hdfs dfs -ls /user/shwetatanwar13/problem2/products
+
+hdfs dfs -ls /user/shwetatanwar13/problem2/products
+
+hdfs dfs -tail /user/shwetatanwar13/problem2/products/part-m-00000
+
+3.Change permissions of all the files under /user/cloudera/problem2/products such that owner has read,write and execute permissions, group has read and write permissions whereas others have just read and execute permissions
+
+hdfs dfs -chmod -R 765 /user/shwetatanwar13/problem2/products
+
+4.read data in /user/cloudera/problem2/products and do the following operations using a) dataframes api b) spark sql c) RDDs aggregateByKey method. Your solution should have three sets of steps. Sort the resultant dataset by category id
+
+
+
+
+pyspark \
+--master yarn \
+--conf spark.ui.port=12890
+
+productsRDD=sc.textFile("/user/shwetatanwar13/problem2/products")
+
+#filter such that your RDD\DF has products whose price is lesser than 100 USD
+filterRDD=productsRDD.filter(lambda x:float(x.split('|')[4])<100)
+
+#on the filtered data set find out the higest value in the product_price column under each category
+mapRDD=filterRDD.map(lambda x:(x.split('|')[1],float(x.split('|')[4])))
+groupRDD=mapRDD.groupByKey()
+groupRDD.take(5)
+highRDD=groupRDD.map(lambda x:(x[0],max(list(x[1]))))
+
+#on the filtered data set also find out total products under each category
+totalRDD=groupRDD.map(lambda x:(x[0],len(list(x[1]))))
+for i in totalRDD.take(10):print(i)
+
+#on the filtered data set also find out the average price of the product under each category
+avgRDD=groupRDD.map(lambda x:(x[0],round(sum(list(x[1]))/len(list(x[1])),2)))
+avgRDD.take(5)
+
+#on the filtered data set also find out the minimum price of the product under each category
+lowRDD=groupRDD.map(lambda x:(x[0],min(list(x[1])))).sortByKey()
+lowRDD.take(5)
+
+finalRDD=groupRDD.map(lambda x:x[0]+','+str(max(list(x[1])))+','+str(len(list(x[1])))+','+str(round(sum(list(x[1]))/len(list(x[1])),2))\
++','+str(min(list(x[1])))
+
+
+#spark sql
+from pyspark.sql import Row
+
+productsDF=productsRDD.map(lambda x:Row(product_id=int(x.split('|')[0]),product_category_id=int(x.split('|')[1]), \
+product_name=x.split('|')[2],product_description=x.split('|')[3], \
+product_price=float(x.split('|')[4]), \
+product_image = x.split('|')[5])).toDF()
+
+productsDF.registerTempTable("products")
+
+maxDF=sqlContext.sql("select product_category_id,max(product_price),count(product_price),round(avg(product_price),2),min(product_price) \
+from products \
+group by product_category_id \
+order by product_category_id")
+
+maxDF.write.format("com.databricks.spark.avro").save("")
+
+maxDF.write.format("com.databricks.spark.csv").save("/user/shwetatanwar13/problem2/results")
+
+countDF=sqlContext.sql("select product_category_id,count(product_price) from products \
+group by product_category_id \
+order by product_category_id")
+
+avgDF=sqlContext.sql("select product_category_id,round(avg(product_price),2) from products \
+group by product_category_id \
+order by product_category_id")
+
+avgDF.show()
+
+minDF=sqlContext.sql("select product_category_id,min(product_price) from products \
+group by product_category_id \
+order by product_category_id")
+
+sparkDF=sqlContext.sql("SET -v")
+
+
+sparkDF.write.format("com.databricks.spark.csv").save("/user/shwetatanwar13/Spark_sql")
+
+pyspark --packages com.databricks:spark-csv_2.10:1.4.0
+
+pyspark \
+--master yarn \
+--conf spark.ui.port=12890 \
+--packages com.databricks:spark-avro_2.10:2.0.1,com.databricks:spark-csv_2.10:1.4.0
