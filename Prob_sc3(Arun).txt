@@ -1,0 +1,43 @@
+1.Import all tables from mysql database into hdfs as avro data files. use compression and the compression codec should be snappy. data warehouse directory should be retail_stage.db
+
+sqoop-import-all-tables \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--as-avrodatafile \
+--compress \
+--compression-codec "org.apache.hadoop.io.compress.SnappyCodec" \
+--warehouse-dir "/user/shwetatanwar13/retail_stage.db" \
+--autoreset-to-one-mapper
+
+
+sqoop-eval \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--query "select * from orders limit 5"
+
+
+#check the data:
+
+hdfs dfs -ls /user/shwetatanwar13/retail_stage.db
+
+hdfs dfs -rmr /user/shwetatanwar13/retail_stage.db
+
+2.Create a metastore table that should point to the orders data imported by sqoop job above. Name the table orders_sqoop. 
+
+hdfs dfs -ls /user/shwetatanwar13/retail_stage.db/orders
+hdfs dfs -tail /user/shwetatanwar13/retail_stage.db/orders/part-m-00000.avro
+
+create database st_retail;
+
+use st_retail_db;
+
+create table orders_sqoop(
+order_id int,
+order_date string,
+order_customer_id int,
+order_status string
+)
+
+
