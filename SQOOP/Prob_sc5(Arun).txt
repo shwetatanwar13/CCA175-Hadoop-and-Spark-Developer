@@ -1,0 +1,304 @@
+1.Using sqoop, import products_replica table from MYSQL into hdfs such that fields are separated by a '|' and lines are separated by '\n'. Null values are represented as -1 for numbers and "NOT-AVAILABLE" for strings. Only records with product id greater than or equal to 1 and less than or equal to 1000 should be imported and use 3 mappers for importing. The destination file should be stored as a text file to directory  /user/cloudera/problem5/products-text. 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table products_replica \
+--target-dir /user/cloudera/problem5/products-text \
+--fields-terminated-by "|" \
+--lines-terminated-by "\n" \
+--null-non-string -1 \
+--null-string "NOT-AVAILABLE" \
+--boundary-query 'select 1,1000' \
+--num-mappers 3
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table products_replica \
+--target-dir /user/cloudera/problem5/products-text_where1 \
+--fields-terminated-by "|" \
+--lines-terminated-by "\n" \
+--null-non-string -1 \
+--null-string "NOT-AVAILABLE" \
+--where 'product_id>=1 and product_id<=1000' \
+--num-mappers 3
+
+hdfs dfs -ls /user/cloudera/problem5/products-text
+hdfs dfs -tail /user/cloudera/problem5/products-text/part-m-00000
+hdfs dfs -cat /user/cloudera/problem5/products-text/part-m-00000 | head
+
+hdfs dfs -tail /user/cloudera/problem5/products-text_where
+hdfs dfs -cat /user/cloudera/problem5/products-text_where/part-m-00000 | head
+
+2.Using sqoop, import products_replica table from MYSQL into hdfs such that fields are separated by a '*' and lines are separated by '\n'. Null values are represented as -1000 for numbers and "NA" for strings. Only records with product id less than or equal to 1111 should be imported and use 2 mappers for importing. The destination file should be stored as a text file to directory  /user/cloudera/problem5/products-text-part1. 
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table products_replica \
+--target-dir /user/cloudera/problem5/products-text-part1 \
+--fields-terminated-by '*' \
+--lines-terminated-by '\n' \
+--null-non-string -1000 \
+--null-string "NA" \
+--where 'product_id<=1111' \
+--num-mappers 2
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table products_replica \
+--target-dir /user/cloudera/problem5/products-text-part4 \
+--fields-terminated-by '*' \
+--lines-terminated-by '\n' \
+--null-non-string -1000 \
+--null-string "NA" \
+--where 'product_id<=1111' \
+--num-mappers 2 \
+--outdir /user/cloudera/problem5/output \
+--boundary-query 'select 1,1000'
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table products_replica \
+--target-dir /user/cloudera/problem5/products-text-part5 \
+--fields-terminated-by '*' \
+--boundary-query 'select 1,1000' \
+--lines-terminated-by '\n' \
+--null-non-string -1000 \
+--null-string "NA" \
+--num-mappers 2 \
+--outdir /user/cloudera/problem5/output
+
+hdfs dfs -ls /user/cloudera/problem5/output
+
+3.Using sqoop, import products_replica table from MYSQL into hdfs such that fields are separated by a '*' and lines are separated by '\n'. Null values are represented as -1000 for numbers and "NA" for strings. Only records with product id greater than 1111 should be imported and use 5 mappers for importing. The destination file should be stored as a text file to directory  /user/cloudera/problem5/products-text-part2.
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table products_replica \
+--fields-terminated-by '*' \
+--lines-terminated-by '\n' \
+--where 'product_id>1111' \
+--num-mappers 5 \
+--target-dir /user/cloudera/problem5/products-text-part7 \
+--outdir /home/cloudera/problem5/output1
+
+hdfs dfs -ls /user/cloudera/problem5/products-text-part6
+hdfs dfs -tail /user/cloudera/problem5/products-text-part6/part-m-00004
+hdfs dfs -cat /user/cloudera/problem5/products-text-part6/part-m-00000 | head
+hdfs dfs -ls /user/cloudera/problem5/output1
+
+4.Using sqoop merge data available in /user/cloudera/problem5/products-text-part1 and /user/cloudera/problem5/products-text-part2 to produce a new set of files in /user/cloudera/problem5/products-text-both-parts
+
+sqoop merge \
+--new-data /user/cloudera/problem5/products-text-part6 \
+--onto /user/cloudera/problem5/products-text-part1 \
+--target-dir /user/cloudera/problem5/products-text-both-parts2 \
+--jar-file /tmp/sqoop-cloudera/compile/34f321f7b1614dc1aab28edd1f389187/products_replica.jar \
+--class-name products_replica \
+--merge-key product_id
+
+5.Using sqoop do the following. Read the entire steps before you create the sqoop job.
+create a sqoop job Import Products_replica table as text file to directory /user/cloudera/problem5/products-incremental. Import all the records.
+insert three more records to Products_replica from mysql
+run the sqoop job again so that only newly added records can be pulled from mysql
+insert 2 more records to Products_replica from mysql
+run the sqoop job again so that only newly added records can be pulled from mysql
+Validate to make sure the records have not be duplicated in HDFS
+
+sqoop job --create import_Products_table \
+-- import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table products_replica \
+--target-dir /user/cloudera/problem5/products-incremental \
+--check-column product_id \
+--incremental append \
+--last-value 0
+
+sqoop job --exec import_Products_table
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "insert into products_replica values(1346,2,'something 1','something 2',300.00,'not avaialble',3,'STRONG')"
+
+sqoop job --exec import_Products_table
+
+hdfs dfs -ls /user/cloudera/problem5/products-incremental
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "update products_replica set "
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "describe products_replica"
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "update products_replica set product_image='Changed"
+
+6.Using sqoop do the following. Read the entire steps before you create the sqoop job.
+create a hive table in database named problem5 using below command 
+create table products_hive  (product_id int, product_category_id int, product_name string, product_description string, product_price float, product_imaage string,product_grade int,  product_sentiment string);
+create a sqoop job Import Products_replica table as hive table to database named problem5. name the table as products_hive. 
+insert three more records to Products_replica from mysql
+run the sqoop job again so that only newly added records can be pulled from mysql
+insert 2 more records to Products_replica from mysql
+run the sqoop job again so that only newly added records can be pulled from mysql
+Validate to make sure the records have not been duplicated in Hive table
+
+create database problem5;
+
+create table products_hive  (product_id int, product_category_id int, product_name string, product_description string, product_price float, product_imaage string,product_grade int,  product_sentiment string);
+
+sqoop job --create Import_Products_replica_as_hive_table \
+-- import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--hive-database problem5 \
+--hive-table products_hive \
+--hive-import \
+--table products_replica \
+--check-column product_id \
+--incremental append \
+--last-value 0
+
+sqoop job -exec Import_Products_replica_as_hive_table
+
+sqoop job -delete Import_Products_replica_as_hive_table
+
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "insert into products_replica values(1347,2,'something 1','something 2',300.00,'not avaialble',3,'STRONG')"
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "insert into products_replica values(1348,2,'something 1','something 2',300.00,'not avaialble',3,'STRONG')"
+
+7. Using sqoop do the following.
+
+#insert 2 more records into products_hive table using hive. 
+
+insert into products_hive values(1347,2,'something 1','something 2',300.00,'not avaialble',3,'STRONG');
+insert into products_hive values(1348,2,'something 1','something 2',300.00,'not avaialble',3,'STRONG');
+
+#create table in mysql using below command  
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "create table products_external(product_id int(11) primary Key, 
+product_grade int(11), \
+product_category_id int(11), \
+product_name varchar(100), \
+product_description varchar(100), \
+product_price float, \
+product_impage varchar(500), \
+product_sentiment varchar(100))"
+
+
+#export data from products_hive (hive) table to (mysql) products_external table. 
+
+sqoop export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table products_external \
+--export-dir /user/hive/warehouse/problem5.db/products_hive \
+--input-fields-terminated-by '\001' \
+--update-key product_id \
+--update-mode allowinsert \
+--columns "product_id,product_category_id,product_name,product_description,product_price,product_impage,product_grade,product_sentiment"
+
+show create table products_hive;
+
+
+product_id          	int                 	                    
+product_category_id 	int                 	                    
+product_name        	string              	                    
+product_description 	string              	                    
+product_price       	float               	                    
+product_imaage      	string              	                    
+product_grade       	int                 	                    
+product_sentiment   	string
+
+#validate 
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "Select max(product_id) from products_external"
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "Select max(product_id) from products_external"
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "Select * from products_external limit 10"
+
+#insert 2 more records to Products_hive table from hive
+
+insert into products_hive values(1351,2,'something 1','something 2',300.00,'not avaialble',3,'STRONG');
+insert into products_hive values(1352,2,'something 1','something 2',300.00,'not avaialble',3,'STRONG');
+
+#export data from products_hive table to products_external table. 
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "insert into products_replica values(1347,2,'something 1','something 2',300.00,'not avaialble',3,'STRONG')"
+
+
+sqoop export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table products_external \
+--export-dir /user/hive/warehouse/problem5.db/products_hive \
+--input-fields-terminated-by '\001' \
+--update-key product_id \
+--update-mode allowinsert \
+--columns "product_id,product_category_id,product_name,product_description,product_price,product_impage,product_grade,product_sentiment"
+
+
+#hive update
+
+#Validate to make sure the records have not be duplicated in mysql table
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "Select * from products_external where product_id =1352"
