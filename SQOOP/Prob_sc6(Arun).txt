@@ -1,0 +1,201 @@
+Problem 6: Provide two solutions for steps 2 to 7
+Using HIVE QL over Hive Context
+Using Spark SQL over Spark SQL Context or by using RDDs
+1.create a hive meta store database named problem6 and import all tables from mysql retail_db database into hive meta store. 
+
+sqlContext.sql("create database problem6")
+
+sqoop-import-all-tables \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--exclude-tables categories,customers,departments,order_items,order_items_nopk \
+--create-hive-table \
+--hive-import \
+--hive-database st_problem6
+
+sqoop-import-all-tables \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--exclude-tables categories,customers,departments,order_items,order_items_nopk \
+--create-hive-table \
+--hive-import \
+--hive-database st_problem6
+
+sqoop-import-all-tables \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--exclude-tables order_items_nopk \
+--hive-import \
+--warehouse-dir /apps/hive/warehouse/st_problem6_test.db \
+--hive-import \
+--hive-database st_problem6_test
+
+2.On spark shell use data available on meta store as source and perform step 3,4,5 and 6. [this proves your ability to use meta store as a source]  
+
+
+3.Rank products within department by price and order by department ascending and rank descending [this proves you can produce ranked and sorted data on joined data sets]
+
+sqlContext.sql("use st_Problem6")
+
+rank_productsDF=sqlContext.sql("select d.department_name,p.product_name,p.product_price, \
+dense_rank() over(partition by c.category_department_id order by p.product_price desc) rank \
+from products p , categories c,departments d \
+where p.product_category_id=c.category_id \
+and d.department_id=c.category_department_id \
+order by d.department_name,rank desc")
+
+use st_problem6;
+
+select d.department_name,p.product_name,p.product_price,
+dense_rank() over(partition by c.category_department_id order by p.product_price desc) rank
+from products p , categories c,departments d 
+where p.product_category_id=c.category_id 
+and d.department_id=c.category_department_id 
+order by d.department_name,rank desc;
+
+
+4.find top 10 customers with most unique product purchases. if more than one customer has the same number of product purchases then the customer with the lowest customer_id will take precedence [this proves you can produce aggregate statistics on joined datasets]
+
+top_customersDF=sqlContext.sql("select c.customer_id, \
+c.customer_fname \
+count(distinct(oi.order_item_order_id)) distinct_products \
+from customers c, \
+order_items oi, \
+orders o \
+where o.order_id=oi.order_item_order_id \
+and o.order_customer_id=c.customer_id \
+group by c.customer_id,c.customer_fname \
+order by distinct_products desc ,c.customer_id limit 10")
+
+#non-ANSI
+select c.customer_id,
+c.customer_fname, 
+count(distinct(oi.order_item_order_id)) distinct_products
+from customers c,order_items oi,orders o 
+where o.order_id=oi.order_item_order_id 
+and o.order_customer_id=c.customer_id 
+group by c.customer_id,c.customer_fname 
+order by distinct_products desc ,c.customer_id limit 10;
+
+select c.customer_id,
+c.customer_fname
+from customers c,order_items oi,orders o 
+where o.order_customer_id=c.customer_id  
+and o.order_id=oi.order_item_order_id 
+limit 10;
+
+#both work fine
+
+select c.customer_id,
+c.customer_fname
+from customers c,order_items oi,orders o 
+where o.order_customer_id=c.customer_id  
+and o.order_id=oi.order_item_order_id 
+limit 10;
+
+
+
+#works fine
+select c.customer_id,
+c.customer_fname,
+count(distinct(oi.order_item_order_id)) distinct_products
+from customers c inner join orders o 
+on o.order_customer_id = c.customer_id  
+inner join order_items oi 
+on o.order_id = oi.order_item_order_id
+group by c.customer_id,c.customer_fname 
+order by distinct_products desc ,c.customer_id
+limit 10;
+
+#doestnt work fine
+select c.customer_id,
+c.customer_fname,
+count(distinct(oi.order_item_order_id)) distinct_products
+from customers c,orders o,order_items oi
+where o.order_customer_id=c.customer_id  
+and o.order_id=oi.order_item_order_id 
+group by c.customer_id,c.customer_fname 
+order by distinct_products desc ,c.customer_id
+limit 10;
+
+top_customersDF.registerTempTable("Top10customers")
+
+#Arun's sol
+select c.customer_id, 
+c.customer_fname, 
+count(distinct(oi.order_item_product_id)) unique_products  
+from customers c inner join orders o 
+on o.order_customer_id = c.customer_id  
+inner join order_items oi 
+on o.order_id = oi.order_item_order_id  
+group by c.customer_id, c.customer_fname  
+order by unique_products desc, c.customer_id   
+limit 10;
+
+sqlContext.sql("use st_problem6")
+
+top_customersDF=sqlContext.sql("select c.customer_id, \
+c.customer_fname, \
+count(distinct(oi.order_item_product_id)) unique_products  \
+from customers c inner join orders o \
+on o.order_customer_id = c.customer_id  \
+inner join order_items oi \
+on o.order_id = oi.order_item_order_id  \
+group by c.customer_id, c.customer_fname  \
+order by unique_products desc, c.customer_id \
+limit 10")
+
+top_customersDF.show()
+
+yarn application -kill application_1540458187951_24618
+
+select c.customer_id, 
+c.customer_fname ,
+count(distinct(oi.order_item_order_id)) distinct_products 
+from customers c inner join orders o 
+on o.order_customer_id=c.customer_id 
+inner join order_items oi
+on o.order_id=oi.order_item_order_id
+group by c.customer_id,c.customer_fname 
+order by distinct_products desc ,c.customer_id 
+limit 10;
+
+top_customersDF.show()
+
+5.On dataset from step 3, apply filter such that only products less than 100 are extracted [this proves you can use subqueries and also filter data]
+
+
+product_priceDF=rank_productsDF.filter('product_price<100')
+
+
+
+6.On dataset from step 4, extract details of products purchased by top 10 customers which are priced at less than 100 USD per unit [this proves you can use subqueries and also filter data]
+
+top_customersDF.registerTempTable("Top10customers")
+
+less100DF=sqlContext.sql("select p.product_name,p.product_price \
+from Top10customers t,order_items oi,orders o,products p \
+where t.customer_id = o.order_customer_id \
+and o.order_id = oi.order_item_order_id \
+and oi.order_item_product_id=p.product_id \
+and p.product_price<100")
+
+less100DF.show()
+
+select p.*
+from Top10customers t,order_items oi,order_items oi,products p
+where t.customer_id=o.order_customer_id
+and o.order_id = oi.order_item_order_id
+and oi.order_item_product_id=p.product_id
+and oi.price<100;
+
+7.Store the result of 5 and 6 in new meta store tables within hive. [this proves your ability to use metastore as a sink]
+
+product_priceDF.write.saveAsTable("rank_product_price")
+
+sqlContext.sql("SET spark.sql.shuffle.partitions =10")
+
+less100DF.write.saveAsTable("top10customers_priceless100")
