@@ -1,0 +1,65 @@
+Problem 7: 
+This step comprises of three substeps. Please perform tasks under each subset completely  
+
+#using sqoop pull data from MYSQL orders table into /user/cloudera/problem7/prework as AVRO data file using only one mapper
+
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table orders \
+--target-dir /user/shwetatanwar13/problem7/prework \
+--as-avrodatafile \
+--num-mappers 1
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /user/cloudera/problem7/prework \
+--as-avrodatafile \
+--num-mappers 1
+
+#Pull the file from \user\cloudera\problem7\prework into a local folder named flume-avro
+
+hdfs dfs -get /user/shwetatanwar13/problem7/prework /home/shwetatanwar13/flume-avro
+
+#create a flume agent configuration such that it has an avro source at localhost and port number 11112,  a jdbc channel and an hdfs file sink at /user/shwetatanwar13/problem7/sink
+
+# Name the components on this agent
+a1.sources = r1
+a1.sinks = k1
+a1.channels = c1
+
+# Describe/configure the source
+a1.sources.r1.type = avro
+a1.sources.r1.bind = localhost
+a1.sources.r1.port = 11112
+
+# Describe the sink
+a1.sinks.k1.type = hdfs
+a1.sinks.k1.hdfs.path=/user/shwetatanwar13/problem7/sink
+
+# Use a channel which buffers events in memory
+a1.channels.c1.type = jdbc
+
+# Bind the source and sink to the channel
+a1.sources.r1.channels = c1
+a1.sinks.k1.channel = c1
+
+An Avro client included in the Flume distribution can send a given file to Flume Avro source using avro RPC mechanism:
+
+flume-ng avro-client -H localhost -p 9999 -F /user/cloudera/problem7/prework/part-m-00000.avro
+
+flume-ng avro-client -H localhost -p 11112 -F /user/shwetatanwar13/problem7/prework/part-m-00000.avro
+
+#Use the following command to run an avro client flume-ng a1 -H localhost -p 11112 -F /user/shwetatanwar13/problem7/prework
+
+flume-ng avro-client -H localhost -p 4444 -F /home/cloudera/flume-avro/part-m-00000.avro
+
+flume-ng agent -name a1 --conf-file /home/shwetatanwar13/flume_demo/Arun_prob7.conf 
+
+#Cloudera
+flume-ng agent -name a1 --conf-file /home/cloudera/flume-avro/Arun_prob7.conf
+flume-ng avro-client -H localhost -p 4444 -F /user/cloudera/problem7/prework/part-m-00000.avro
