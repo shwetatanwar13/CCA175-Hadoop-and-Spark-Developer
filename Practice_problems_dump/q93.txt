@@ -1,0 +1,29 @@
+Problem Scenario 33 : You have given a files as below. spark5/EmployeeName.csv (id,name) spark5/EmployeeSalary.csv (id,salary)
+
+Now write a Spark code in scala which will load these two tiles from hdfs and join the same, and produce the (name.salary) values. 
+
+empRDD=sc.textFile("/user/cloudera/problem93/EmployeeSalary.csv")
+salRDD=sc.textFile("/user/cloudera/problem93/EmployeeName.csv")
+
+salmapRDD=salRDD.map(lambda x:(x.split(',')[0],x.split(',')[1]))
+empmapRDD=empRDD.map(lambda x:(x.split(',')[0],x.split(',')[1]))
+
+joinRDD=empmapRDD.join(salmapRDD)
+namesalRDD=joinRDD.map(lambda x:(x[1][1],x[1][0]))
+
+#And save the data in multiple tile group by salary (Means each file will have name of employees with same salary).
+#Make sure file name include salary as well. 
+
+salnameRDD=namesalRDD.map(lambda x:(x[1],x[0]))
+a=salnameRDD.groupByKey()
+a.foreach(lambda x:save_file(x[0],list(x[1])))
+
+def save_file(a,b):
+  filename='/home/cloudera/problem5/'+a+'.txt'
+  f1=open(filename,'w')
+  for i in b:
+   f1.write(i)
+   f1.write('\n')
+  f1.close()
+  
+  

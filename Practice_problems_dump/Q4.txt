@@ -1,0 +1,25 @@
+Problem Scenario 20 : You have been given MySQL DB with following details.
+user=retail_dba 
+password=cloudera 
+database=retail_db 
+table=retail_db.categories 
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db 
+
+Please accomplish following activities. 
+
+1. Write a Sqoop Job which will import "retaildb.categories" table to hdfs, in a directory name "categories_targetJob". 
+
+sqoop-job -create import_categories \
+-- import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table categories \
+--target-dir /user/shwetatanwar13/categories_targetJob
+
+sqoop-job --exec import_categories
+
+hdfs dfs -ls /user/shwetatanwar13/categories_targetJob
+
+hdfs dfs -cat /user/shwetatanwar13/categories_targetJob/part-m-00000
+hdfs dfs -cat /user/shwetatanwar13/categories_targetJob/part*

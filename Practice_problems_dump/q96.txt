@@ -1,0 +1,49 @@
+Problem Scenario 11 : You have been given following mysql database details as well as other info. 
+user=retail_dba 
+password=cloudera 
+database=retail_db 
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db 
+Please accomplish following. 
+1. Import departments table in a directory called departments. 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table departments \
+--target-dir /home/cloudera/departments
+
+
+2. Once import is done, please insert following 5 records in departments mysql table.
+
+ Insert into departments values(10, 'physics');
+ Insert into departments values(11, 'Chemistry'); 
+ Insert into departments values(12, 'Maths'); 
+ Insert into departments values(13, 'Science'); 
+ Insert into departments values(14, 'Engineering'); 
+
+3. Now import only new inserted records and append to existring directory . which has been created in first step. 
+
+sqoop-job --create import_department \ 
+-- import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table departments \
+--target-dir /home/cloudera/departments \
+--check-column department_id \
+--incremental append \
+--last-value 0
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table departments \
+--target-dir /home/cloudera/departments \
+--check-column department_id \
+--incremental append \
+--last-value 7
+
+hdfs dfs -ls /home/cloudera/departments
