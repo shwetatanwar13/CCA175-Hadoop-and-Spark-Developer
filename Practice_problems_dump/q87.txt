@@ -1,0 +1,27 @@
+QUESTION 87 CORRECT TEXT Problem Scenario 91 : You have been given data in json format as below. {"first_name":"Ankit", "last_name":"Jain"} {"first_name":"Amir", "last_name":"Khan"} {"first_name":"Rajesh", "last_name":"Khanna"} {"first_name":"Priynka", "last_name":"Chopra"} {"first_name":"Kareena", "last_name":"Kapoor"} 
+
+{"first_name":"Lokesh", "last_name":"Yadav"} 
+
+Do the following activity 
+
+1. create employee.json tile locally. 
+
+hdfs dfs -get /home/cloudera/problem5/employee.json /user/cloudera/
+
+2. Load this tile on hdfs 
+
+hdfs dfs -put /home/cloudera/problem5/employee.json /user/cloudera/
+
+3. Register this data as a temp table in Spark using Python. 
+
+employeedf=sqlContext.read.json("/user/cloudera/employee.json")
+employeedf.show()
+employeedf.registerTempTable("employee")
+
+4. Write select query and print this data. 
+
+sqlContext.sql("select * from employee").show()
+
+5. Now save back this selected data in json format
+
+employeedf.write.json("/user/cloudera/json")

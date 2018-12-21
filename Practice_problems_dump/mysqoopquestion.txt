@@ -1,0 +1,67 @@
+1.create orders_replica table as
+create table orders_replica as select * from orders;
+
+2.alter table orders_replica add primary key(order_id);
+
+3.Using sqoop, import orders_replica table from MYSQL into hdfs such that fields are separated by a '|' and lines are separated by '\n'. Null values are represented as -1 for numbers and "NOT-AVAILABLE" for strings. Only records with order id greater than or equal to 1 and less than or equal to 1000 should be imported and use 3 mappers for importing. The destination file should be stored as a text file to directory  /user/cloudera/problem5/orders-text-part1. 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders_replica \
+--fields-terminated-by '|' \
+--lines-terminated-by '\n' \
+--null-non-string -1 \
+--null-string "NOT-AVAILABLE" \
+--num-mappers 3 \
+--target-dir /user/cloudera/problem5/orders-text-part1 \
+--boundary-query 'select 1,1000'
+
+hdfs dfs -ls /user/cloudera/problem5/orders-text-part1
+
+4.Using sqoop, import orders_replica table from MYSQL into hdfs such that fields are separated by a '*' and lines are separated by '\n'. Null values are represented as -1000 for numbers and "NA" for strings. Only records with product id greater than equal to 1000 should be imported and use 5 mappers for importing. The destination file should be stored as a text file to directory  /user/cloudera/problem5/orders-text-part2.
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "update orders_replica set order_status='OPEN AGAIN' where order_id =1000"
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders_replica \
+--fields-terminated-by '*' \
+--lines-terminated-by '\n' \
+--null-non-string -1000 \
+--null-string "NA" \
+--where 'order_id>=1000' \
+--as-textfile \
+--target-dir '/user/cloudera/problem5/orders-text-part2' \
+--num-mappers 2
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders_replica \
+--fields-terminated-by '*' \
+--lines-terminated-by '\n' \
+--null-non-string -1 \
+--null-string "NOT-AVAILABLE" \
+--num-mappers 3 \
+--target-dir /user/cloudera/problem5/orders-text-part1 \
+--boundary-query 'select 1,1000'
+
+4.Merge the above 2
+
+sqoop-merge \
+--merge-key order_id \
+--new-data '/user/cloudera/problem5/orders-text-part2' \
+--onto '/user/cloudera/problem5/orders-text-part1' \
+--target-dir '/user/cloudera/problem5/orders-both-parts' \
+--class-name orders_replica \
+--jar-file /tmp/sqoop-cloudera/compile/29a4f9681c6704f7c57e19d3a08e4980/orders_replica.jar

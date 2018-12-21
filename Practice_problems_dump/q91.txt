@@ -1,0 +1,25 @@
+QUESTION 91 CORRECT TEXT Problem Scenario 44 : 
+You have been given 4 files , with the content as given below: 
+
+spark11/file1.txt 
+
+Apache Hadoop is an open-source software framework written in Java for distributed storage and distributed processing of very large data sets on computer clusters built from commodity hardware. All the modules in Hadoop are designed with a fundamental assumption that hardware failures are common and should be automatically handled by the framework 
+
+spark11/file2.txt 
+
+The core of Apache Hadoop consists of a storage part known as Hadoop Distributed File System (HDFS) and a processing part called MapReduce. Hadoop splits files into large blocks and distributes them across nodes in a cluster. To process data, Hadoop transfers packaged code for nodes to process in parallel based on the data that needs to be processed. 
+
+spark11/file3.txt 
+
+his approach takes advantage of data locality nodes manipulating the data they have access to to allow the dataset to be processed faster and more efficiently than it would be in a more conventional supercomputer architecture that relies on a parallel file system where computation and data are distributed via high-speed networking 
+
+spark11/file4.txt 
+
+Apache Storm is focused on stream processing or what some call complex event processing. Storm implements a fault tolerant method for performing a computation or pipelining multiple computations on an event as it flows into a system. One might use Storm to transform unstructured data as it flows into a system into a desired format (spark11Afile1.txt) (spark11/file2.txt) (spark11/file3.txt) (sparkl 1/file4.txt) 
+
+Write a Spark program, which will give you the highest occurring words in each file. With their file name and highest occurring words.
+
+rdd=sc.wholeTextFiles("/user/cloudera/problem93/prob")
+mapRDD=rdd.flatMap(lambda x:((x[0].split('/')[7],i) for i in x[1].split()))
+rdd=mapRDD.map(lambda x:((x[0],x[1]),1))
+rdd=finalRDD.reduceByKey(lambda x,y:x if x[1]>y[1] else y)
