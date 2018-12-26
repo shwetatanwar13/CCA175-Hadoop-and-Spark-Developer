@@ -1,0 +1,47 @@
+Problem Scenario 45 : You have been given 2 files , with the content as given Below 
+
+(spark12/technology.txt) 
+
+hdfs dfs -touchz spark12/technology.txt
+hdfs dfs -appendToFile - spark12/technology.txt
+
+first,last,technology 
+Amit,Jain,java 
+Lokesh,kumar,unix 
+Mithun,kale,spark 
+Rajni,vekat,hadoop 
+Rahul,Yadav,scala 
+
+(spark12/salary.txt) 
+
+hdfs dfs -touchz spark12/salary.txt
+hdfs dfs -appendToFile - spark12/salary.txt
+
+first,last,salary 
+Amit,Jain,100000 
+Lokesh,kumar,95000 
+Mithun,kale,150000 
+Rajni,vekat,154000 
+Rahul,Yadav,120000 
+
+Write a Spark program, which will join the data based on first and last name and save the joined results in following format, 
+first Last.technology.salary
+
+techRDD=sc.textFile("/user/cloudera/spark12/technology.txt")
+f=techRDD.first()
+techRDD=techRDD.filter(lambda x:x not in f)
+techmapRDD=techRDD.map(lambda x:((x.split(',')[0],x.split(',')[1]),x.split(',')[2]))
+
+salRDD=sc.textFile("/user/cloudera/spark12/salary.txt")
+f=salRDD.first()
+salRDD=salRDD.filter(lambda x:x not in f)
+salmapRDD=salRDD.map(lambda x:((x.split(',')[0],x.split(',')[1]),x.split(',')[2]))
+salmapRDD.collect()
+
+resultRDD=techmapRDD.join(salmapRDD)
+resultRDD.collect()
+(u'Mithun', u'kale'), (u'spark ', u'150000 ')
+finalRDD=resultRDD.map(lambda x:x[0][0]+' '+x[0][1]+'.'+x[1][0]+'.'+x[1][1])
+finalRDD.collect()
+
+finalRDD.coalesce(1).saveAsTextFile("/user/cloudera/comb")
