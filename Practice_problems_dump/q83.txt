@@ -1,0 +1,11 @@
+QUESTION 83 CORRECT TEXT Problem Scenario 72 : 
+You have been given a table named "employee2" with following detail. 
+first_name string 
+last_name string 
+
+Write a spark script in python which read this table and print all the rows and individual column values. 
+
+empDF=sqlContext.sql("select * from employee2")
+empDF.show()
+
+
