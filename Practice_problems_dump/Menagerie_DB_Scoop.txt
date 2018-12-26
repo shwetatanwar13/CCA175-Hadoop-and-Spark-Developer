@@ -1,0 +1,464 @@
+
+
+sqoop list-databases \
+--connect jdbc:mysql://quickstart.cloudera:3306/ \
+--username root \
+--password cloudera
+
+sqoop list-databases \
+--connect jdbc:mysql://quickstart.cloudera:3306/ \
+--username root \
+-P
+
+cm
+firehose
+hist_forex
+hue
+metastore
+mysql
+nav
+navms
+oozie
+retail_db
+rman
+sentry
+
+#list tables in a database sentry
+
+sqoop list-tables \
+--connect jdbc:mysql://quickstart.cloudera:3306/sentry \
+--username root \
+--password cloudera
+
+AUTHZ_PATH
+AUTHZ_PATHS_MAPPING
+AUTHZ_PATHS_SNAPSHOT_ID
+SENTRY_DB_PRIVILEGE
+SENTRY_GM_PRIVILEGE
+SENTRY_GROUP
+SENTRY_HMS_NOTIFICATION_ID
+SENTRY_PATH_CHANGE
+SENTRY_PERM_CHANGE
+SENTRY_ROLE
+SENTRY_ROLE_DB_PRIVILEGE_MAP
+SENTRY_ROLE_GM_PRIVILEGE_MAP
+SENTRY_ROLE_GROUP_MAP
+SENTRY_VERSION
+
+#write a query to find
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/sentry \
+--username root \
+--password cloudera \
+--query "select * from SENTRY_ROLE limit 10"
+
+
+create database Menagerie
+
+CREATE DATABASE menagerie;
+
+SOURCE /home/cloudera/menagerie-db/cr_pet_tbl.sql
+
+LOAD DATA LOCAL INFILE '/home/cloudera/menagerie-db/pet.txt' INTO TABLE pet;
+
+SOURCE /home/cloudera/menagerie-db/ins_puff_rec.sql
+
+SOURCE /home/cloudera/menagerie-db/cr_event_tbl.sql
+
+LOAD DATA LOCAL INFILE '/home/cloudera/menagerie-db/event.txt' INTO TABLE event;
+
+#import data from pets and event to hdfs text file 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/menagerie \
+--username root \
+--password cloudera \
+--table pet \
+--as-textfile \
+--fields-terminated-by ';' \
+--lines-terminated-by '\n' \
+--num-mappers 3 \
+--null-string 'NA' \
+--null-non-string '0' \
+--target-dir /home/cloudera/menagerie_import/ \
+--split-by sex
+
+
+#Error no primary key
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--query "desc pet"
+
+hdfs dfs -ls /home/cloudera/menagerie_import/
+
+/tmp/sqoop-cloudera/compile/1ec4fbb8446721fa4c739209fa8e438d/pet.jar
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/menagerie \
+--username root \
+--password cloudera \
+--table pet \
+--as-textfile \
+--fields-terminated-by ';' \
+--lines-terminated-by '\n' \
+--num-mappers 3 \
+--null-string 'NA' \
+--null-non-string '0' \
+--target-dir /home/cloudera/menagerie_import/pet_name/ \
+--split-by name
+
+
+hdfs dfs -ls /home/cloudera/menagerie_import/pet_name
+
+hdfs dfs -cat /home/cloudera/menagerie_import/pet_name/part-m-00000
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/menagerie \
+--username root \
+--password cloudera \
+--table pet \
+--as-textfile \
+--fields-terminated-by ';' \
+--lines-terminated-by '\n' \
+--num-mappers 3 \
+--null-string 'NA' \
+--null-non-string '0' \
+--target-dir /home/cloudera/menagerie_import/pet_birth/ \
+--split-by birth
+
+hdfs dfs -ls /home/cloudera/menagerie_import/pet_birth/
+
+#import event table
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/menagerie \
+--username root \
+--password cloudera \
+--table event \
+--as-textfile \
+--split-by date \
+--fields-terminated-by ';' \
+--lines-terminated-by '\n' \
+--target-dir /home/cloudera/menagerie_import/event_birth/
+
+hdfs dfs -ls /home/cloudera/menagerie_import/event_birth/
+
+#insert into event table and then import them to hdfs
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera/menagerie \
+--username root \
+--password cloudera \
+--query "insert into event values('Claws','2018-12-24','litter','dog poop'),('Slim','2018-12-24','vet','skin desease')"
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/menagerie \
+--username root \
+--password cloudera \
+--table event \
+--incremental append \
+--check-column date \
+--last-value '2018-12-23' \
+--target-dir /home/cloudera/menagerie_import/event_birth_inserted/ \
+--split-by date \
+--fields-terminated-by ';' \
+--lines-terminated-by '\n'
+
+#merge both folders
+sqoop-merge \
+--class-name event \
+--jar-file /tmp/sqoop-cloudera/compile/6f35220e66c45c1a9a705cbb5260ce37/event.jar \
+--new-data /home/cloudera/menagerie_import/event_birth_inserted/ \
+--onto /home/cloudera/menagerie_import/event_birth/ \
+--target-dir /home/cloudera/menagerie_import/event_birth_merged \
+--merge-key name
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera/menagerie \
+--username root \
+--password cloudera \
+--query "select * from event"
+
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera/menagerie \
+--username root \
+--password cloudera \
+--query "update event set type = 'bath',date='2018-12-24' where name ='Buffy'"
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/menagerie \
+--username root \
+--password cloudera \
+
+
+
+--table event \
+--target-dir /home/cloudera/menagerie_import/event_birth_updated/ \
+--check-column date \
+--incremental lastmodified \
+--last-value '2018-12-23' \
+--split-by name
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/menagerie \
+--username root \
+--password cloudera \
+--table event \
+--target-dir /home/cloudera/menagerie_import/event_birth/ \
+--check-column date \
+--incremental lastmodified \
+--last-value '2018-12-23' \
+--split-by name \
+--merge-key name \
+--fields-terminated-by ';'
+
+hdfs dfs -ls /home/cloudera/menagerie_import/event_birth/
+
+#sqoop-import-all in avro format
+
+sqoop-import-all-tables \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--as-avrodatafile \
+--warehouse-dir /home/cloudera/menagerie_import/menagerie/ \
+--autoreset-to-one-mapper \
+--null-non-string 0 \
+--null-string 'NA'
+
+hdfs dfs -ls /home/cloudera/menagerie_import/menagerie/
+
+#sqoop import table pet using where in parquet format and snappy compression
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--as-parquetfile \
+--compress \
+--compression-codec 'org.apache.hadoop.io.compress.SnappyCodec' \
+--table event \
+--target-dir /home/cloudera/menagerie_import/event_parquet_snappy \
+--boundary-query "select 'Buffy','Fang'" \
+--split-by name \
+--fields-terminated-by ':' \
+--null-string 'NA' \
+--null-non-string 0 \
+--columns name,date,type \
+--num-mappers 3
+
+hdfs dfs -rmr /home/cloudera/menagerie_import/event_parquet_snappy
+
+hdfs dfs -ls /home/cloudera/menagerie_import/event_parquet_snappy
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--as-textfile \
+--compress \
+--table event \
+--target-dir /home/cloudera/menagerie_import/event_textfile_bound \
+--boundary-query "select 'Buffy','Fang'" \
+--split-by name \
+--fields-terminated-by ':' \
+--null-string 'NA' \
+--null-non-string 0 \
+--columns name,date,type \
+--num-mappers 3
+
+#default compression is .gz
+
+
+hdfs dfs -rmr /home/cloudera/menagerie_import/event_textfile_bound
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--as-textfile \
+--delete-target-dir \
+--table event \
+--target-dir /home/cloudera/menagerie_import/event_textfile_bound \
+--boundary-query "select 'Buffy','Fang'" \
+--split-by name \
+--fields-terminated-by ':' \
+--null-string 'NA' \
+--null-non-string 0 \
+--columns name,date,type \
+--num-mappers 3
+
+#parquet with gZIP compression with where
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--as-parquetfile \
+--compress \
+--compression-codec 'org.apache.hadoop.io.compress.GzipCodec' \
+--table event \
+--delete-target-dir \
+--target-dir /home/cloudera/menagerie_import/event_parquet_gzip \
+--where "name='Fluffy'" \
+--split-by name \
+--fields-terminated-by ':' \
+--null-string 'NA' \
+--null-non-string 0 \
+--columns name,date,type \
+--num-mappers 1
+
+
+#Hive import
+#database shpuld existcfor import
+
+create database menagerie;
+
+use menagerie;
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--table event \
+--split-by name \
+--hive-import \
+--hive-database menagerie \
+--hive-table event
+
+hdfs dfs -ls /user/hive/warehouse/menagerie.db/event
+
+# Above creates table in menagerie DB in forder under hive as managed table
+
+#hive import with delimited
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--table pet \
+--hive-import \
+--hive-database menagerie \
+--target-dir /home/cloudera/menagerie_import/pet_hive \
+--hive-table pet \
+--fields-terminated-by ',' \
+--lines-terminated-by '\n' \
+--split-by name
+
+#Above creates a pet managed table with fields terminated by , but the directory is still hive
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--table pet \
+--hive-import \
+--hive-database menagerie \
+--warehouse-dir /home/cloudera/menagerie_import/pet_hive \
+--hive-table pet1 \
+--fields-terminated-by ',' \
+--lines-terminated-by '\n' \
+--split-by name
+
+#hive import as parquet compressed as snappy
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--table pet \
+--hive-import \
+--hive-database menagerie \
+--warehouse-dir /home/cloudera/menagerie_import/pet_hive \
+--hive-table pet_avro \
+--fields-terminated-by ',' \
+--lines-terminated-by '\n' \
+--split-by name \
+--as-parquetfile \
+--compression-codec 'org.apache.hadoop.io.compress.SnappyCodec'
+
+#load both tables pet_avro and event tables in spark
+
+eventRDD=sc.textFile("/user/hive/warehouse/menagerie.db/event")
+from pyspark import Row
+
+eventDF=eventRDD.map(lambda x:Row(name=x.split('\001')[0],date=x.split('\001')[1],type=x.split('\001')[2],remark=x.split('\001')[3
+])).toDF()
+petDF=sqlContext.read.parquet("/user/hive/warehouse/menagerie.db/pet_avro")
+petDF.show()
+#find total events for each pet as pet_name,total_event,type orderby pet,total
+
+pet1DF=sqlContext.read.table('menagerie.pet_avro')
+event1DF=sqlContext.read.table('menagerie.event')
+
+sqlContext.sql("use menagerie")
+
+resultDF=sqlContext.sql("select p.name,type,count(*) as total \
+from pet_avro p,event e \
+where p.name=e.name \
+group by p.name,type \
+order by p.name,total desc")
+
+resultDF.write.saveAsTable("pet_event_count") #its creating parquet gzip? .gz.parquet
+#because spark.sql.source.default = parquet and spark.sql.parquet.compression.codec = gzip
+
+resultDF.write.format("com.databricks.spark.avro").mode("overwrite").saveAsTable("pet_event_count")
+
+hdfs dfs -ls /user/hive/warehouse/menagerie.db/pet_event_count
+hdfs dfs -ls /user/hive/warehouse/menagerie.db/sqlset
+
+#insert into existing hive table
+resultDF.write.insertInto("menagerie.pet_event_count")
+use menagerie;
+
+sqlset.map(lambda x:x.key+','+x.default+','+x.meaning).coalesce(1).saveAsTextFile("user/cloudera/sqlset")
+
+sqlContext.sql("SET -v").show(n=200)
+
+#create table in mysql and export data from hive pet_event_count table
+
+mysql -uroot -pcloudera
+
+create table pet_event_count
+(pet_name varchar(20),
+ type varchar(20),
+ total_evets int)
+
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--table pet_event_count \
+--export-dir /user/hive/warehouse/menagerie.db/pet_event_count \
+--input-fields-terminated-by '\001'
+
+
+sqlContext.sql("SET spark.sql.sources.default = 
+
+#insert new row in hive table pet_event_count and export that record to mysql using sqoop job
+
+use menagerie;
+
+insert into table pet_event_count values("pandu","birthday",1);
+
+sqoop-job --create export_pet_event_count \
+-- export \
+--connect jdbc:mysql://quickstart.cloudera:3306/menagerie \
+--username root \
+--password cloudera \
+--table pet_event_count \
+--export-dir /user/hive/warehouse/menagerie.db/pet_event_count \
+--input-fields-terminated-by '\001' \
+--update-key name \
+--update-mode allowinsert
+
+sqoop-job --exec export_pet_event_count
