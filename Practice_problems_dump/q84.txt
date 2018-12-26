@@ -1,0 +1,29 @@
+QUESTION 84 CORRECT TEXT Problem Scenario 36 :
+
+You have been given a file named spark8/data.csv (type,name). data.csv 
+1,Lokesh 
+2,Bhupesh 
+2,Amit 
+2,Ratan 
+2,Dinesh 
+1,Pavan 
+1,Tejas 
+2,Sheela 
+1,Kumar 
+1,Venkat 
+
+hdfs dfs -touchz data.csv
+hdfs dfs -appendToFile data.csv
+
+1. Load this file from hdfs and save it back as (id, (all names of same type)) in results directory. 
+However, Save the output as a Text file and output must be written in a single file.
+
+rdd=sc.textFile('/user/cloudera/data.csv')
+mapRDD=rdd.map(lambda x:(x.split(',')[0],x.split(',')[1]))
+groupRDD.coalesce(1).saveAsTextFile("/user/cloudera/data_new")
+   
+ 
+[cloudera@quickstart ~]$ hdfs dfs -cat /user/cloudera/data_new/part-00000
+(u'1', (u'Lokesh ', u'Pavan ', u'Tejas ', u'Kumar ', u'Venkat'))
+(u'2', (u'Bhupesh ', u'Amit ', u'Ratan ', u'Dinesh ', u'Sheela '))
+
