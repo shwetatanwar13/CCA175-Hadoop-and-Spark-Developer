@@ -1,0 +1,22 @@
+QUESTION 77 CORRECT TEXT 
+Problem Scenario 13 : 
+You have been given following mysql database details as well as other info. 
+user=retail_dba 
+password=cloudera 
+database=retail_db 
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db
+Please accomplish following. 
+1. Create a table in retailedb with following definition. 
+
+CREATE table departments_export (department_id int(11), 
+department_name varchar(45), 
+created_date T1MESTAMP DEFAULT NOWQ); 
+
+2. Now import the data from following directory into departments_export table, /user/cloudera/departments new 
+
+sqoop_export \
+--connect jdbc:mysql://quickstart:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table departments_export \
+--export-dir /user/cloudera/departments_new
