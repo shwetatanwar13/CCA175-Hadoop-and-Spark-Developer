@@ -1,0 +1,85 @@
+QUESTION 73 CORRECT TEXT Problem Scenario 30 : 
+
+You have been given three csv files in hdfs as below.
+ 
+EmployeeName.csv with the field (id, name) 
+EmployeeManager.csv (id, manager Name) 
+EmployeeSalary.csv (id, Salary) 
+
+Using Spark and its API you have to generate a joined output as below and save as a text tile (Separated by comma) for final distribution and output must be sorted by id. 
+
+ld,name,salary,managerName 
+
+hdfs dfs -touchz EmployeeManager.csv
+hdfs dfs -appendToFile - EmployeeManager.csv
+
+empManagerDF=sc.textFile("EmployeeManager.csv").map(lambda x:x.split(',')). \
+map(lambda x:Row(id=x[0],name=x[1])).toDF()
+
+empManagerDF.registerTempTable("EmpManager")
+
+EmployeeManager.csv
+
+E01,Vishnu
+E02,Satyam
+E03,Shiv
+E04,Sundar
+E05,John
+E06,Pallavi 
+E07,Tanvir
+E08,Shekhar
+E09,Vinod
+E10,Jitendra
+
+empNameDF=sc.textFile("EmployeeName.csv").map(lambda x:x.split(',')). \
+map(lambda x:Row(id=x[0],emp_name=x[1])).toDF()
+
+empNameDF.registerTempTable("EmpName")
+
+hdfs dfs -touchz EmployeeName.csv
+hdfs dfs -appendToFile - EmployeeName.csv
+
+EmployeeName.csv 
+E01,Lokesh 
+E02,Bhupesh 
+E03,Amit 
+E04,Ratan 
+E05,Dinesh 
+E06,Pavan 
+E07,Tejas 
+E08,Sheela 
+E09,Kumar 
+E10,Venkat 
+
+hdfs dfs -touchz EmployeeSalary.csv 
+hdfs dfs -appendToFile - EmployeeSalary.csv
+
+empSalDF=sc.textFile("EmployeeSalary.csv").map(lambda x:x.split(',')). \
+map(lambda x:Row(id=x[0],emp_sal=x[1])).toDF()
+
+empSalDF.registerTempTable("EmpSal")
+
+EmployeeSalary.csv 
+E01,50000 
+E02,50000 
+E03,45000 
+E04,45000 
+E05,50000 
+E06,45000 
+E07,50000 
+E08,10000 
+E09,10000 
+E10,10000 
+
+ld,name,salary,managerName 
+
+resultDF=sqlContext.sql("select concat(es.id,',',rtrim(en.emp_name),',', \
+rtrim(es.emp_sal),',',em.mngr_name) \
+from EmpSal es,EmpName en,EmpManager em \
+where es.id = en.id \
+and en.id = em.id \
+order by es.id")
+
+resultDF.show()
+
+resultDF.coalesce(1).write.text("Result_Emp")
