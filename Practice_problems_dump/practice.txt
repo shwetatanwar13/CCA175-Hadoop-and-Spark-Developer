@@ -1,0 +1,72 @@
+find total number of orders placed by customer and his id,name(concatenated fname and lname) and save as avro and textformat in destination directory
+/user/training/cust_ord/avro
+
+/user/training/cust_ord/text
+
+/user/training/cust_ord/sequence
+
+
+
+
+import orders and customers table in directory /user/training/exam_practice_april/ as parquet with delimeter "," and lines-terminated by "\n"
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--fields-terminated-by ',' \
+--lines-terminated-by '\n' \
+--as-parquetfile \
+--target-dir /user/cloudera/exam_practice_dec/orders
+
+hdfs dfs -ls /user/cloudera/exam_practice_dec/orders
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table customers \
+--fields-terminated-by ',' \
+--lines-terminated-by '\n' \
+--as-parquetfile \
+--target-dir /user/cloudera/exam_practice_dec/customers
+
+hdfs dfs -ls /user/cloudera/exam_practice_dec/customers
+
+
+orderDF=sqlContext.read.parquet("/user/cloudera/exam_practice_dec/orders")
+customerDF=sqlContext.read.parquet("/user/cloudera/exam_practice_dec/customers")
+orderDF.registerTempTable('orders_temp')
+customerDF.registerTempTable('customer_temp')
+
+
+
+finalDF=sqlContext.sql("select concat(c.customer_id,',',customer_fname,' ',customer_lname,',',count(*)) \
+from customer_temp c,orders_temp o \
+where o.order_customer_id = c.customer_id \
+group by c.customer_id,customer_fname,customer_lname")
+
+final1DF=sqlContext.sql("select c.customer_id,customer_fname,customer_lname, \
+count(*) total_orders \
+from customer_temp c,orders_temp o \
+where o.order_customer_id = c.customer_id \
+group by c.customer_id,customer_fname,customer_lname")
+
+sqlContext.sql("set spark.sql.shuffle.partitions=10")
+
+sqlContext.setConf('spark.sql.shuffle.partitions','10')
+
+final1DF.map(lambda x:str(x[0])+x[1]+x[2]+str(x[3])).coalesce(2).saveAsTextFile("/user/training/cust_ord/text_shuffle3")
+
+finalDF.write.format("com.databricks.spark.avro").save("/user/training/cust_ord/avro")
+
+finalDF.coalesce(2).write.text("/user/training/cust_ord/text2")
+
+
+final1DF.map(lambda x:(str(x[0]),str(x[0])+x[1]+x[2]+str(x[3]))).coalesce(2).saveAsSequenceFile("/user/training/cust_ord/seq_file")
+
+
+
+
+

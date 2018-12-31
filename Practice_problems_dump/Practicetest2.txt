@@ -1,0 +1,515 @@
+Question 1:
+Instructions:
+
+Connect to mySQL database using sqoop, import all products into a metastore table named product_new inside default database.
+
+Data Description:
+
+A mysql instance is running on the gateway node.In that instance you will find products table
+
+> Installation : on the cluser node gateway 
+
+> Database name:  retail_db
+
+> Table name: Products
+
+> Username: root
+
+> Password: cloudera
+
+Output Requirement:
+
+product_new table does not exist in metastore.
+
+Save output in parquet format fields separated by a colon and lines should be terminated by pipe 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--hive-import \
+--table products \
+--as-parquetfile \
+--fields-terminated-by ':' \
+--lines-terminated-by '|' \
+--hive-table product_new
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--hive-import \
+--table products \
+--fields-terminated-by ':' \
+--hive-table product_new1
+
+
+sqoop-import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--hive-import \
+--table products \
+--as-parquetfile \
+--fields-terminated-by ':' \
+--lines-terminated-by '\n' \
+--hive-database st_product_export \
+--hive-table sh_product_new \
+--hive-overwrite \
+--warehouse-dir=/apps/hive/warehouse/st_product_export.db
+
+#below works with schema other than default
+*******************************************
+sqoop-import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--hive-import \
+--table products \
+--as-parquetfile \
+--fields-terminated-by ':' \
+--lines-terminated-by '|' \
+--hive-database st_product_export \
+--hive-table sh_product_export
+
+sqoop-import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--hive-import \
+--table products \
+--as-parquetfile \
+--fields-terminated-by ':' \
+--lines-terminated-by '|' \
+--hive-database default \
+--hive-table sh_product
+
+sqoop-import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--hive-import \
+--table products \
+--as-parquetfile \
+--fields-terminated-by ':' \
+--lines-terminated-by '\n' \
+--hive-table product_new1
+
+
+
+sqoop-import -Dmapreduce.job.user.classpath.first=true \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table products \
+--as-parquetfile \
+--fields-terminated-by ':' \
+--lines-terminated-by '|' \
+--target-dir /user/shwetatanwar13/products123
+
+mysql -u retail_user -h ms.itversity.com -p
+
+#Below works fine
+sqoop-import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table products \
+--as-parquetfile \
+--fields-terminated-by ':' \
+--lines-terminated-by '|' \
+--target-dir /user/shwetatanwar13/product_sh_test
+
+sqoop-export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--table product_hive_sh \
+--export-dir /user/shwetatanwar13/product_sh_test \
+--input-fields-terminated-by ':' \
+--input-lines-terminated-by '|'
+
+#Below works fine
+
+sqoop-import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table products \
+--as-parquetfile \
+--fields-terminated-by ':' \
+--lines-terminated-by '|' \
+--target-dir /user/cloudera/product_sh_test
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table product_hive \
+--export-dir /user/cloudera/product_sh_test \
+--input-fields-terminated-by ':' \
+--input-lines-terminated-by '|'
+
+
+Question 2:
+PreRequiste:
+
+Create product_hive table in mysql using below script:
+
+use retail_export;
+
+create table product_hive_sh as select * from products;
+
+truncate product_hive_sh;
+
+Instructions:
+
+Using sqoop export all data from metastore product_new table created in last problem statement into products_hive table table in mysql. 
+
+Data Description:
+
+A mysql instance is running on the gateway node.In that instance you will find customers table that contains customers data.
+
+> Installation : on the cluser node gateway 
+
+> Database name:  retail_db
+
+> Table name: product_hive
+> Username: root
+
+> Password: cloudera
+
+Output Requirement:
+
+product_hive  table should contain all product data imported from hive table.
+
+
+sqoop-export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--table product_hive_sh \
+--hcatalog-database st_product_export \
+--hcatalog-table sh_product_export
+
+sqoop-export \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_export \
+--username retail_user \
+--password itversity \
+--table product_hive_sh \
+--export-dir /apps/hive/warehouse/st_product_export.db/sh_product_export \
+--input-fields-terminated-by ':' \
+--input-lines-terminated-by '|'
+
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table product_hive \
+--export-dir /user/hive/warehouse/product_new \
+--input-fields-terminated-by ':' \
+--input-lines-terminated-by '|'
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table product_hive \
+--export-dir /user/hive/warehouse/product_new \
+--input-fields-terminated-by ':'
+
+
+****************************************************************************************
+
+Question 1:
+Instructions:
+
+Connect to mySQL database using sqoop, import all products into a metastore table named product_new inside default database.
+
+Data Description:
+
+A mysql instance is running on the gateway node.In that instance you will find products table
+
+> Installation : on the cluser node gateway 
+
+> Database name:  retail_db
+
+> Table name: Products
+
+> Username: root
+
+> Password: cloudera
+
+Output Requirement:
+
+product_new table does not exist in metastore.
+
+Save output in parquet format fields separated by a colon and lines should be terminated by pipe 
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--hive-import \
+--table products \
+--as-parquetfile \
+--fields-terminated-by ':' \
+--lines-terminated-by '|' \
+--hive-table product_new
+
+
+_________________________________________________________________________________
+Question 2:
+PreRequiste:
+
+Create product_hive table in mysql using below script:
+
+use retail_db;
+
+create table product_hive as select * from products;
+
+truncate product_hive;
+
+Instructions:
+
+Using sqoop export all data from metastore product_new table created in last problem statement into products_hive table table in mysql. 
+
+Data Description:
+
+A mysql instance is running on the gateway node.In that instance you will find customers table that contains customers data.
+
+> Installation : on the cluser node gateway 
+
+> Database name:  retail_db
+
+> Table name: product_hive
+> Username: root
+
+> Password: cloudera
+
+Output Requirement:
+
+product_hive  table should contain all product data imported from hive table.
+
+#Below doesnt work
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table product_hive \
+--export-dir /user/hive/warehouse/product_new \
+--input-fields-terminated-by ':' \
+--input-lines-terminated-by '|'
+
+#Below works fine
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table product_hive \
+--hcatalog-table product_new
+___________________________________________________________________________
+uestion 3:
+PreRequiste:
+
+Run below sqoop command to import orders table from mysql  into hdfs to the destination /user/cloudera/practice2/problem3/avro as avro file. sqoop import --connect "jdbc:mysql://localhost/retail_db" --password cloudera --username root --table orders --as-avrodatafile --target-dir /user/cloudera/practice2/problem3/avro 
+
+Instructions:
+
+Convert data-files stored at hdfs location /user/cloudera/practice2/problem3/avro into parquet file and save in HDFS.
+
+Output Requirement:
+
+Result should be saved in /user/cloudera/practice2/problem3/parquet-gzip
+
+Output file should be saved as Parquet file with gzip Compression.
+
+
+
+orderDF=sqlContext.read.format("com.databricks.spark.avro").load('/user/cloudera/practice2/problem3/avro')
+
+
+sqlContext.setConf("spark.sql.parquet.compression.codec","gzip")
+
+orderDF.write.parquet("/user/cloudera/practice2/problem3/parquet-gzip")
+________________________________________________________________________________
+Question 4:
+PreRequiste:
+
+Run below sqoop command to import customers table from mysql into hive table customers_hive:
+
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --username root --password cloudera --table customers --warehouse-dir /user/cloudera/problem3/customers_hive/input --hive-import --create-hive-table --hive-database default --hive-table customers_hive
+
+Instructions:
+
+Get Customers from metastore table named "customers_hive" whose fname is like "Rich" and save the results in HDFS in text format.
+
+Output Requirement:
+
+Result should be saved in /user/cloudera/problem4/customers/output as text file. Output should contain only fname, lname and city
+fname and lname should seperated by tab with city seperated by colon
+
+Sample Output 
+Richard Plaza:Francisco
+Rich Smith:Chicago
+
+
+finalDF=sqlContext.sql("select concat(customer_fname,'\t',customer_lname,':',customer_city) \
+from customers_hive \
+where customer_fname like 'Rich%'")
+
+finalDF.write.text("/user/cloudera/problem4/customers/output")
+______________________________________________________________________________________
+Question 5:
+PreRequiste:
+
+Run below sqoop command to import customer table from mysql  into hdfs to the destination /user/cloudera/problem2/customer/parquet  as parquet file. 
+
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --password cloudera --username root --table customers --as-parquetfile --target-dir /user/cloudera/problem2/customer/parquet
+
+Instructions:
+
+Get total numbers customers in each state  and  save results in HDFS in csv format.
+
+Output Requirement:
+
+Result should be saved in /user/cloudera/problem2/customer_csv_new. Output should have state name followed by total number of customers in that state.
+
+
+custDF=sqlContext.read.parquet("/user/cloudera/problem2/customer/parquet")
+custDF.registerTempTable("Customer_Temp")
+
+finalDF=sqlContext.sql("select customer_state,count(*) cust_count \
+from Customer_Temp \
+group by customer_state")
+
+#Doesnt work on VM
+finalDF.write.format("com.databricks.spark.csv").save("/user/cloudera/problem2/customer_csv_new")
+
+Important Information:
+
+To run on local vm, start the spark-shell with databricks packages but in actual exam you don't need to add packages while starting shell. All databricks packages should be available by default in spark-shell.
+
+pyspark --packages com.databricks:spark-csv_2.10:1.4.0
+
+Spark 2.0 has built in CSV format so below command will work perfectly in spark 2.0 but not in spark 1.6
+
+groupedData.write.csv("/user/cloudera/problem2/customer_csv_new")
+
+*****itversity****
+
+sqoop import \
+--connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table customers \
+--as-parquetfile \
+--delete-target-dir \
+--target-dir /user/shwetatanwar13/problem2/customer/parquet
+
+hdfs dfs -ls /user/shwetatanwar13/problem2/customer/parquet
+
+pyspark \
+--master yarn \
+--conf spark.ui.port=34243 \
+--packages com.databricks:spark-avro_2.10:2.0.1,com.databricks:spark-csv_2.10:1.1.0
+
+custDF=sqlContext.read.parquet("/user/shwetatanwar13/problem2/customer/parquet")
+custDF.registerTempTable("Customer_Temp")
+
+finalDF=sqlContext.sql("select customer_state,count(*) cust_count \
+from Customer_Temp \
+group by customer_state")
+
+#works on itversity
+finalDF.coalesce(3).write.format("com.databricks.spark.csv").option("header","true").save("/user/shwetatanwar13/problem2/customer_csv_new")
+
+________________________________________________________________________________
+
+Question 6:
+Instructions:
+
+Import products table from mysql into hive metastore table named product_ranked in warehouse directory /user/cloudera/practice4.db. Run below sqoop statement
+
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --username root --password cloudera --table products --warehouse-dir /user/cloudera/practice4.db --hive-import --create-hive-table --hive-database default --hive-table product_ranked -m 1
+
+Rank products within each category by price and order by price ascending and rank descending
+
+Data Description:
+
+A mysql instance is running on the gateway node.In that instance you will find products table.
+
+> Installation : on the cluser node gateway 
+
+> Database name:  retail_db
+
+> Table name: Products
+
+> Username: root
+
+> Password: cloudera
+
+Output Requirement:
+
+Output should have product_id,product_name,product_price and its rank.Result should be saved in /user/cloudera/pratice4/output/ 
+
+
+finalDF=sqlContext.sql("select product_id,product_name,product_price, \
+rank() over(partition by product_category_id order by product_price) rank \
+from product_ranked \
+order by product_price,rank desc")
+
+finalDF.map(lambda x:str(x[0])+','+x[1]+','+x[2]+','+x[3]).saveAsTextFile('/user/cloudera/pratice4/output/')
+
+hdfs dfs -ls /user/cloudera/pratice4/output/
+
+Question 7: Correct
+PreRequiste:
+
+Run below sqoop command to import orders table from mysql  into hdfs to the destination /user/cloudera/problem3/parquet as parquet file.
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --password cloudera --username root --table orders --as-parquetfile --target-dir /user/cloudera/problem3/parquet
+
+Instructions:
+
+Fetch all pending orders from  data-files stored at hdfs location /user/cloudera/problem3/parquet and save it  into json file using snappy compression in HDFS
+
+Output Requirement:
+
+Result should be saved in /user/cloudera/problem3/orders_pending
+Output file should be saved as json file.
+
+
+#not working in VM
+
+order_parDF=sqlContext.read.parquet("/user/cloudera/problem3/parquet")
+order_parDF=order_parDF.filter("order_status='PENDING'")
+order_parDF.toJSON().saveAsTextFile('/user/cloudera/problem3/orders_pending',compressionCodecClass="org.apache.hadoop.io.compress.SnappyCodec")
+
+Important Information:
+
+Please make sure you are running all your solutions on spark 1.6 since exam environment will be providing that.
+
+Also solution marked as correct will give you an error if you are running it on spark 2. To run it on spark 2.0 use below command 
+
+filteredData.toJSON.rdd.saveAsTextFile("/user/cloudera/problem3/orders_pending",classOf[org.apache.hadoop.io.compress.SnappyCodec]);
+
+***itversity***********
+
+sqoop import --connect jdbc:mysql://ms.itversity.com:3306/retail_db \
+--username retail_user \
+--password itversity \
+--table orders \
+--as-parquetfile \
+--target-dir /user/shwetatanwar13/problem3/parquet
+
+
+
+order_parDF=sqlContext.read.parquet("/user/shwetatanwar13/problem3/parquet")
+order_parDF=order_parDF.filter("order_status='PENDING'")
+order_parDF.toJSON().saveAsTextFile('/user/shwetatanwar13/problem3/orders_pending',compressionCodecClass="org.apache.hadoop.io.compress.SnappyCodec")
+
+sqlContext.setConf("spark.sql.json.compression.codec","snappy")
+order_parDF.write.json('/user/shwetatanwar13/problem3/orders_pending_json')

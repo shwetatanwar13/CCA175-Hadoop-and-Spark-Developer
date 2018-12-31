@@ -1,0 +1,259 @@
+QUESTION 1 CORRECT TEXT Problem Scenario 20 : You have been given MySQL DB with following details. 
+user=retail_dba 
+password=cloudera 
+database=retail_db 
+table=retail_db.categories 
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db 
+Please accomplish following activities. 
+
+1. Write a Sqoop Job which will import "retaildb.categories" table to hdfs, in a directory name "categories_targetJob". 
+
+sqoop-job --create import_categories \
+-- import \
+--connect jdbc:mysql://quickstart:3306/retail_db \
+--username retail_dba \
+--password=cloudera \
+--table categories \
+--target-dir /user/cloudera/categories_targetJob
+
+sqoop-job --exec import_categories
+hdfs dfs -ls /user/cloudera/categories_targetJob
+
+Problem Scenario 74 : You have been given MySQL DB with following details. 
+user=retail_dba 
+password=cloudera 
+database=retail_db 
+table=retail_db.orders 
+table=retail_db.order_items 
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db 
+Columns of order table : (orderjd , order_date , ordercustomerid, order status} Columns of orderjtems table : (order_item_td , order_item_order_id , order_item_product_id, order_item_quantity,order_item_subtotal,order_item_product_price) 
+
+Please accomplish following activities. 
+
+1. Copy "retaildb.orders" and "retaildb.orderjtems" table to hdfs in respective directory p89_orders and p89_order_items . 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table orders \
+--delete-target-dir \
+--target-dir /user/cloudera/p89_orders
+
+sqoop-import \
+--connect jdbc:mysql://quickstart:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--delete-target-dir \
+--target-dir /user/cloudera/p89_order_items
+
+order_rdd=sc.textFile("/user/cloudera/p89_orders")
+order_item_RDD=sc.textFile("/user/cloudera/p89_order_items")
+
+from pyspark.sql import Row
+
+orderDF=order_rdd.map(lambda x:x.split(',')). \
+map(lambda x:Row(order_id =int(x[0]), order_date=x[1] , order_customer_id=x[2], order_status=x[3])).toDF()
+
+order_itemDF= order_item_RDD.map(lambda x:x.split(',')). \
+map(lambda x:Row(order_item_id =int(x[0]), order_item_order_id=int(x[1]) ,order_item_product_id=int(x[2]), order_item_quantity=int(x[3]),order_item_subtotal=float(x[4]),order_item_product_price=float(x[4]))).toDF()
+
+2. Join these data using orderjd in Spark and Python 
+
+
+3. Now fetch selected columns from joined data Orderld, Order date and amount collected on this order. 
+
+orderDF.registerTempTable("order_1")
+order_itemDF.registerTempTable("order_item1")
+
+sqlContext.sql("select order_id,order_date,round(sum(order_item_subtotal),2) amount \
+from order_1 join order_item1 \
+on order_id = order_item_order_id \
+group by order_id,order_date").show()
+
+4. Calculate total order placed for each date, and produced the output sorted by date. 
+
+sqlContext.sql("select order_date,count(*) total_order_placed \
+from order_1 \
+group by order_date \
+order by order_date").show()
+
+
+
+Problem Scenario 12 : You have been given following mysql database details as well as other info. 
+user=retail_dba 
+password=cloudera 
+database=retail_db 
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db 
+Please accomplish following. 
+
+1. Create a table in retailedb with following definition. 
+
+CREATE table departments_new (
+department_id int(11),
+department_name varchar(45),
+created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP); 
+
+2. Now insert records from departments table to departments_new 
+
+insert into departments_new (department_id,department_name) select * from departments;
+
+3. Now import data from departments_new table to hdfs. 
+
+sqoop-job --create import_dept_new \
+-- import \
+--connect jdbc:mysql://quickstart:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--target-dir /user/cloudera/departments_new \
+--table departments_new \
+--check-column created_date \
+--incremental append \
+--last-value 0 \
+--m 1
+
+sqoop-job --exec import_dept_new
+
+sqoop-job --delete import_dept_new
+
+hdfs dfs -ls /user/cloudera/departments_new
+
+4. Insert following 5 records in departmentsnew table. 
+
+Insert into departments_new values(110, "Civil" , null); 
+Insert into departments_new values(111, "Mechanical" , null); 
+Insert into departments_new values(112, "Automobile" , null); 
+Insert into departments_new values(113, "Pharma" , null); 
+Insert into departments_new values(114, "Social Engineering" , null); 
+
+5. Now do the incremental import based on created_date column.
+
+
+sqoop-job --create import_dept_new \
+-- import \
+--connect jdbc:mysql://quickstart:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--target-dir /user/cloudera/departments_new \
+--table departments_new \
+--check-column created_date \
+--incremental append \
+--last-value 0 \
+--m 1
+
+sqoop-job --exec import_dept_new
+
+
+Problem Scenario 86 : In Continuation of previous question, please accomplish following activities. 
+
+1. Select Maximum, minimum, average , Standard Deviation, and total quantity. 
+
+sqlContext.sql("select max(product_price),min(product_price),avg(product_price),stddev(product_price),sum()
+from product_replica")
+
+2. Select minimum and maximum price for each product code. 
+
+3. Select Maximum, minimum, average , Standard Deviation, and total quantity for each product code, hwoever make sure Average and Standard deviation will have maximum two decimal values. 
+
+4. Select all the product code and average price only where product count is more than or equal to 3. 
+
+5. Select maximum, minimum , average and total of all the products for each code. Also produce the same across all the products.
+
+
+QUESTION 15 CORRECT TEXT Problem Scenario 9 : You have been given following mysql database details as well as other info. 
+user=retail_dba 
+password=cloudera 
+database=retail_db 
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db 
+
+Please accomplish following. 
+
+1. Import departments table in a directory. 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table departments \
+--delete-target-dir \
+--target-dir /user/cloudera/departments1
+
+2. Again import departments table same directory (However, directory already exist hence it should not overrride and append the results) 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table departments \
+--delete-target-dir \
+--append \
+--target-dir /user/cloudera/departments1
+
+
+3. Also make sure your results fields are terminated by '|' and lines terminated by '\n\ 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart:3306/retail_db \
+--username retail_dba \
+--password cloudera \
+--table departments \
+--delete-target-dir \
+--append \
+--target-dir /user/cloudera/departments1
+--fields-terminated-by '|' \
+--lines-terminated-by '\n'
+
+QUESTION 17 CORRECT TEXT Problem Scenario 24 : You have been given below comma separated employee information. 
+Data Set: 
+
+name,salary,sex,age 
+alok,100000,male,29 
+jatin,105000,male,32 
+yogesh,134000,male,39 
+ragini,112000,female,35 
+jyotsana,129000,female,39 
+valmiki,123000,male,29 
+
+Requirements: 
+Use the netcat service on port 44444, and nc above data line by line. 
+Please do the following activities. 
+
+1. Create a flume conf file using fastest channel, which write data in hive warehouse directory, in a table called flumemaleemployee (Create hive table as well tor given data). 
+
+2. While importing, make sure only male employee data is stored.
+
+
+
+
+# Name the components on this agent
+a1.sources = r1
+a1.sinks = k1
+a1.channels = c1
+
+# Describe/configure the source
+a1.sources.r1.type = netcat
+a1.sources.r1.bind = localhost
+a1.sources.r1.port = 44444
+
+a1.sources.r1.interceptors = i1
+a1.sources.r1.interceptors.i1.type=regex_filter
+a1.sources.r1.interceptors.i1.regex=female
+a1.sources.r1.interceptors.i1.excludeEvents=true
+
+# Describe the sink
+a1.sinks.k1.type = hdfs
+a1.sinks.k1.hdfs.path = /user/hive/warehouse/flumemaleemployee
+a1.sinks.k1.hdfs.fileType=DataStream
+a1.sinks.k1.hdfs.writeFormat=Text
+
+# Use a channel which buffers events in memory
+a1.channels.c1.type = memory
+a1.channels.c1.capacity = 1000
+a1.channels.c1.transactionCapacity = 100
+
+# Bind the source and sink to the channel
+a1.sources.r1.channels = c1
+a1.sinks.k1.channel = c1
+
+flume-ng agent -n a1 -f /home/cloudera/flume-avro/flume4.conf
