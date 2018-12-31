@@ -1,0 +1,29 @@
+# Load data from HDFS and store results back to HDFS using Spark
+# Problem formulation
+# =============================
+# Read the /user/cloudera/rawdata/movielens/tags file from hdfs,
+#and save as parquet in /user/cloudera/rawdata/movielens/tags_new folder after removing header
+
+hdfs dfs -cat /user/cloudera/rawdata/movielens/tags/tags.csv | head
+
+tagsRDD=sc.textFile("/user/cloudera/rawdata/movielens/tags")
+f=tagsRDD.first()
+woheaderRDD=tagsRDD.filter(lambda x:x not in f)
+woheaderRDD.first()
+
+from pyspark.sql import Row
+
+tagsDF=woheaderRDD.map(lambda x:Row(user_id=x.split(',')[0],movie_id=x.split(',')[1],tag=x.split(',')[2],timestamp=x.split(',')[3])).toDF()
+
+tagsDF.show()
+
+tagsDF.registerTempTable("tags")
+
+tagspermovDF=sqlContext.sql("select movie_id,count(*) as tag_count from tags group by movie_id order by movie_id")
+
+tagspermovDF.show()
+
+tagspermovDF.write.saveAsTable("movie_tag_count")
+
+sqlContext.sql("select * from movie_tag_count limit 20").show()
+tagsDF.write.parquet("/user/cloudera/rawdata/movielens/tags_new")

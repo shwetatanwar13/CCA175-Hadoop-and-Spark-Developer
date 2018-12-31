@@ -1,0 +1,16 @@
+# Load data from HDFS and store results back to HDFS using Spark
+# Problem formulation
+# =============================
+# Read the /user/cloudera/rawdata/flight_dataset/carrier/carriers.csv file from hdfs,
+# convert all records in the file to a tab-delimited format and save back to hdfs at 
+# /user/cloudera/rawdata/flight_dataset/py_out/carrier_tabbed.
+# Also remove all quotes in each field as well as the header
+
+carrierRDD=sc.textFile("/user/cloudera/rawdata/flight_dataset/carrier/carriers.csv")
+carrierRDD.show()
+mapRDD=carrierRDD.map(lambda x:x.replace(",","\t")). \
+filter(lambda x:x[0:4] not in ("Code")).map(lambda x:x.replace("\"",""))
+mapRDD.first()
+mapRDD.take(10)
+
+mapRDD.saveAsTextFile("user/cloudera/rawdata/flight_dataset/py_out/carrier_tabbed")
