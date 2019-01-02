@@ -1,0 +1,208 @@
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table customers \
+--as-avrodatafile \
+--fields-terminated-by '|' \
+--compress \
+--compression-codec "org.apache.hadoop.io.compress.SnappyCodec" \
+--target-dir /user/cloudera/problem1/customers/avrodata \
+--where "customer_state='CA'"
+
+
+sqoop import --connect jdbc:mysql://quickstart.cloudera:3306/retail_db --password cloudera --username root --table customers --target-dir /user/cloudera/problem11/customers/text2 --fields-terminated-by '^' --columns customer_id,customer_lname,customer_street
+
+create table customer_new(
+id int,
+lname varchar(255),
+street varchar(255)
+);
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table customer_new \
+--input-fields-terminated-by '^' \
+--export-dir /user/cloudera/problem1/customers/text2
+
+
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --password cloudera --username root --table orders --as-avrodatafile --target-dir /user/cloudera/problem22/avro
+
+
+#Convert data-files stored at hdfs location /user/cloudera/problem22/avro  into parquet file using snappy compression and save in HDFS.
+
+custDF=sqlContext.read.format("com.databricks.spark.avro").load("/user/cloudera/problem22/avro")
+sqlContext.setConf("spark.sql.parquet.compression.codec","snappy")
+custDF.write.parquet("/user/cloudera/problem22/parquet-snappy")
+
+
+
+Question 4:
+Prerequiste:
+
+Import orders table from mysql into hdfs location /user/cloudera/practice4/question3/orders/.Run below sqoop statement
+
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --username root --password cloudera --table orders --target-dir /user/cloudera/practice4/question3/orders/
+
+Import customers from mysql into hdfs location /user/cloudera/practice4/question3/customers/.Run below sqoop statement
+
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --username root --password cloudera --table customers --target-dir /user/cloudera/practice4/question3/customers/ --columns "customer_id,customer_fname,customer_lname"
+
+Instructions:
+
+Join the data at hdfs location /user/cloudera/practice4/question3/orders/ & /user/cloudera/practice4/question3/customers/ to find out customers whose orders status is like "pending"
+
+Schema for customer File
+
+Customer_id,customer_fname,customer_lname
+
+Schema for Order File
+
+Order_id,order_date,order_customer_id,order_status
+
+
+customerRDD=sc.textFile("/user/cloudera/practice4/question3/customers/")
+orderRDD=sc.textFile("/user/cloudera/practice4/question3/orders/")
+
+from pyspark.sql import Row
+customerDF=customerRDD.map(lambda x:x.split(',')).map(lambda x:Row(customer_id=int(x[0]),customer_fname=x[1],customer_lname=x[2])).toDF()
+
+customerDF.registerTempTable("customers")
+
+orderDF=orderRDD.map(lambda x:x.split(',')).map(lambda x:Row(Order_id=int(x[0]),order_date=x[1],order_customer_id=int(x[2]),order_status=x[3])).toDF()
+
+orderDF.registerTempTable("order")
+
+finalDF=sqlContext.sql("select c.customer_id,customer_fname,customer_lname,o.order_status \
+from customers c,order o \
+where c.customer_id = o.order_customer_id \
+and o.order_status like 'PENDING%'")
+
+finalDF.map(lambda x:str(x.customer_id)+','+x.customer_fname+','+x.customer_lname+','+x.order_status).saveAsTextFile("/user/cloudera/p1/q7/output")
+
+hdfs dfs -ls /user/cloudera/p1/q7/output
+
+
+
+
+
+Question 5:
+PreRequiste:
+
+Run below sqoop command to import customer table from mysql  into hdfs to the destination /user/cloudera/problem5/customer/parquet  as parquet file. Only import customer_id,customer_fname,customer_city.
+
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --password cloudera --username root --table customers --columns "customer_id,customer_fname,customer_city"  --target-dir /user/cloudera/problem5/customer/parquet --as-parquetfile
+
+Instructions:
+
+Count number of customers grouped by customer city and customer first name where customer_fname is like "Mary" and order the results  by customer first name and save the result as text file.
+
+Input folder is  /user/cloudera/problem5/customer/parquet.
+
+custDF=sqlContext.read.parquet("/user/cloudera/problem5/customer/parquet")
+
+custDF.registerTempTable("customer5")
+
+finalDF=sqlContext.sql("select concat(cast(customer_city as string),'|', \
+cast(customer_fname as string),'|',cast(count(*) as string)) \
+from customer5 \
+where customer_fname like 'Mary%' \
+group by customer_city,customer_fname \
+order by customer_fname")
+
+finalDF.write.text("/user/cloudera/problem5/customer_grouped")
+
+Output Requirement:
+
+Result should have customer_city,customer_fname and count of customers and output should be saved in /user/cloudera/problem5/customer_grouped as text file with fields separated by pipe character
+
+
+
+Question 6:
+PreRequiste:
+
+Run below sqoop command to import customer table from mysql  into hdfs to the destination /user/cloudera/problem6/customer/text as text file and fields seperated by tab character Only import customer_id,customer_fname,customer_city.
+
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --password cloudera --username root --table customers --fields-terminated-by '\t' --columns "customer_id,customer_fname,customer_city"  --target-dir /user/cloudera/problem6/customer/text
+
+Instructions:
+
+Find all customers that lives 'Brownsville' city and save the result into HDFS.
+
+Input folder is  /user/cloudera/problem6/customer/text.
+
+Output Requirement:
+
+Result should be saved in /user/cloudera/problem6/customer_Brownsville Output file should be saved in Json format
+
+
+custRDD=sc.textFile("/user/cloudera/problem6/customer/text")
+finalRDD=custRDD.filter(lambda x:x.split(',')[2]=='Brownsville')
+
+finalDF=finalRDD.map(lambda x:Row(customer_id=x.split('\t')[0],customer_fname=x.split('\t')[1],customer_city=x.split('\t')[2])).toDF()
+
+finalDF.write.json("/user/cloudera/problem6/customer_Brownsville")
+
+
+Important Information:
+
+Please make sure you are running all your solutions on spark 1.6 since exam environment will be providing that.
+
+Also solution marked as correct will give you an error if you are running it on spark 2. To run it on spark 2.0 use below command 
+
+filteredData.toJSON.rdd.saveAsTextFile("/user/cloudera/problem6/customer_Brownsville"); 
+
+Question 7:
+PreRequiste:
+
+Run below sqoop command to import few columns from customer table from mysql  into hdfs to the destination /user/cloudera/problem2/customer/avro_snappy as avro file. 
+
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --password cloudera --username root --table customers  --target-dir /user/cloudera/problem2/customer/avro --columns "customer_id,customer_fname,customer_lname" --as-avrodatafile
+
+Instructions:
+
+Convert data-files stored at hdfs location /user/cloudera/problem2/customer/avro  into tab delimited file using gzip compression and save in HDFS.
+
+custDF=sqlContext.read.format("com.databricks.spark.avro").load("/user/cloudera/problem2/customer/avro")
+
+custDF.map(lambda x:str(x[0])+'\t'+x[1]+'\t'+x[2]).saveAsTextFile("/user/cloudera/problem2/customer_text_gzip",compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
+
+hdfs dfs -ls /user/cloudera/problem2/customer_text_gzip
+
+Output Requirement:
+
+Result should be saved in /user/cloudera/problem2/customer_text_ gzip Output file should be saved as tab delimited file in gzip Compression.
+
+Sample Output:
+
+21    Andrew   Smith
+
+111    Mary    Jons
+
+Question 8:
+PreRequiste:
+
+Run below sqoop command to import products table from mysql into hive table product_new:
+
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --username root --password cloudera --table products --warehouse-dir /user/cloudera/problem3/products_replica/input --hive-import --create-hive-table --hive-database default --hive-table product_replica -m 1
+
+Instructions:
+
+Get products from metastore table named "product_replica" whose price > 100 and save the results in HDFS in parquet format
+
+productDF=sqlContext.sql("select product_name from product_replica \
+where product_price>100")
+
+productDF.write.parquet("/user/cloudera/problem3/product/output")
+
+Output Requirement:
+
+Result should be saved in /user/cloudera/problem3/product/output as parquet file
+
+
+
+Important Information:
+
+In case hivecontext does not get created in your environment or table not found issue occurs. Just check that SPARK_HOME/conf has hive_site.xml copied from /etc/hive/conf/hive_site.xml. If in case any derby lock issue occurs, delete SPARK_HOME/metastore_db/dbex.lck to release the lock.

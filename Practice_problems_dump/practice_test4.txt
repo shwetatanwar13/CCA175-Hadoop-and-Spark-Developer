@@ -1,0 +1,317 @@
+Question 1:
+Instructions:
+
+Connect to mySQL database using sqoop, import all completed orders into HDFS directory.
+
+Data Description:
+
+A mysql instance is running on the gateway node.In that instance you will find customers table that contains customers data.
+
+> Installation : on the cluser node gateway 
+
+> Database name:  retail_db
+
+> Table name: Orders
+
+> Username: root
+
+> Password: cloudera
+
+Output Requirement:
+
+Place the customers files in HDFS directory "/user/cloudera/problem1/orders/parquetdata"
+
+Use parquet format with tab delimiter and snappy compression.
+
+Null values are represented as -1 for numbers and "NA" for strings
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "select * from orders limit 5"
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /user/cloudera/problem1/orders/parquetdata \
+--as-parquetfile \
+--fields-terminated-by '\t' \
+--compress \
+--compression-codec "org.apache.hadoop.io.compress.SnappyCodec" \
+--null-non-string -1 \
+--null-string "NA" \
+--where "order_status='COMPLETE'"
+
+#EXperiment with Gzip
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /user/cloudera/problem1/orders/gzipdata \
+--as-parquetfile \
+--fields-terminated-by '\t' \
+--compress \
+--compression-codec "org.apache.hadoop.io.compress.GzipCodec" \
+--null-non-string -1 \
+--null-string "NA" \
+--where "order_status='COMPLETE'"
+
+hdfs dfs -ls /user/cloudera/problem1/orders/gzipdata
+
+hdfs dfs -ls /user/cloudera/problem1/orders/parquetdata
+________________________________
+
+Question 2:
+Instructions:
+
+Connect to mySQL database using sqoop, import all customers that lives in 'CA' state.
+
+Data Description:
+
+A mysql instance is running on the gateway node.In that instance you will find customers table that contains customers data.
+
+> Installation : on the cluser node gateway 
+
+> Database name:  retail_db
+
+> Table name: Customers
+
+> Username: root
+
+> Password: cloudera
+
+Output Requirement:
+
+Place the customers files in HDFS directory "/user/cloudera/problem1/customers_selected/avrodata"
+
+Use avro format with pipe delimiter and snappy compression.
+
+Load every only customer_id,customer_fname,customer_lname
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query "select * from customers limit 5"
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table customers \
+--columns customer_id,customer_fname,customer_lname \
+--target-dir /user/cloudera/problem1/customers_selected/avrodata \
+--fields-terminated-by '|' \
+--compress \
+--compression-codec snappy \
+--as-avrodatafile \
+--where "customer_state='CA'"
+
+
+hdfs dfs -ls /user/cloudera/problem1/customers_selected/avrodata
+
+_________________________________________________________________________
+
+Question 3:
+Instructions:
+
+Connect to mySQL database using sqoop, import all customers whose street name contains "Plaza" . Example:
+
+Hazy Mountain Plaza
+
+Tawny Fox Plaza .
+
+Data Description:
+
+A mysql instance is running on the gateway node.In that instance you will find customers table that contains customers data.
+
+> Installation : on the cluser node gateway 
+
+> Database name:  retail_db
+
+> Table name: Customers
+
+> Username: root
+
+> Password: cloudera
+
+Output Requirement:
+
+Place the customers files in HDFS directory "/user/cloudera/problem1/customers/textdata"
+
+Save output in text format with fields seperated by a '*' and lines should be terminated by pipe 
+
+Load only "Customer id, Customer fname, Customer lname and Customer street name"
+
+Sample Output
+
+11942*Mary*Bernard*Tawny Fox Plaza|10480*Robert*Smith*Lost Horse Plaza|.................................
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table customers \
+--target-dir /user/cloudera/problem1/customers/textdata \
+--columns customer_id,customer_fname,customer_lname,customer_street \
+--fields-terminated-by '*' \
+--delete-target-dir \
+--lines-terminated-by '|' \
+--where "customer_street like '%Plaza%'" \
+--as-textfile
+
+hdfs dfs -ls /user/cloudera/problem1/customers/textdata
+_____________________________________________________
+
+Question 4:
+Instructions:
+
+Connect to mySQL database using sqoop, import all orders whose id > 1000 into HDFS directory in bzip compression
+
+Data Description:
+
+A mysql instance is running on the gateway node.In that instance you will find customers table that contains customers data.
+
+> Installation : on the cluser node gateway 
+
+> Database name:  retail_db
+
+> Table name: Orders
+
+> Username: root
+
+> Password: cloudera
+
+Output Requirement:
+
+Place the customers files in HDFS directory "/user/cloudera/problem1/orders_new/order_bzip"
+
+Use avro format with tab delimiter and compressed with bzip compression
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /user/cloudera/problem1/orders_new/order_bzip \
+--compress \
+--compression-codec bzip2 \
+--fields-terminated-by '\t' \
+--as-avrodatafile \
+--where 'order_id>1000'
+
+hdfs dfs -ls /user/cloudera/problem1/orders_new/order_bzip
+________________________________________________
+
+Question 5:
+Instructions:
+
+Connect to mySQL database using sqoop, import all orders whose id > 1000 into HDFS directory in gzip codec
+
+Data Description:
+
+A mysql instance is running on the gateway node.In that instance you will find customers table that contains customers data.
+
+> Installation : on the cluser node gateway 
+
+> Database name:  retail_db
+
+> Table name: Orders
+
+> Username: root
+
+> Password: cloudera
+
+Output Requirement:
+
+Place the customers files in HDFS directory "/user/cloudera/problem1/orders_new/parquetdata"
+
+Use parquet format with tab delimiter and compressed with gzip codec
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /user/cloudera/problem1/orders_new/parquetdata1 \
+--fields-terminated-by '\t' \
+--compress \
+--as-parquetfile \
+--compression-codec org.apache.hadoop.io.compress.GzipCodec \
+--where 'order_id>1000'
+
+hdfs dfs -ls /user/cloudera/problem1/orders_new/parquetdata
+__________________________________________________________________
+
+Question 6:
+Instructions:
+
+Connect to mySQL database using sqoop, import all products into a metastore table named product_sample.
+
+Data Description:
+
+A mysql instance is running on the gateway node.In that instance you will find customers table that contains customers data.
+
+> Installation : on the cluser node gateway 
+
+> Database name:  retail_db
+
+> Table name: Products
+
+> Username: root
+
+> Password: cloudera
+
+Output Requirement:
+
+product_sample table does not exist in metastore.
+
+Fields should be separated format separated by a '^' 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table products \
+--hive-import \
+--hive-table product_sample \
+--fields-terminated-by '^'
+
+________________________________________________________________
+
+Question 7:
+PreRequiste:
+
+Run below sqoop command to import orders table from mysql  into hdfs to the destination /user/cloudera/problem4_ques7/input as text file. 
+sqoop import --connect "jdbc:mysql://localhost/retail_db" --password cloudera --username root --table orders --target-dir /user/cloudera/problem4_ques7/input --as-textfile
+
+Instructions:
+
+Save the data to hdfs using no compression as orc file
+
+Output Requirement:
+
+Result should be saved in HDFS at /user/cloudera/problem4_ques7/output.
+
+
+orderRDD=sc.textFile("/user/cloudera/problem4_ques7/input")
+
+from pyspark.sql import Row
+
+orderDF=orderRDD.map(lambda x:x.split(',')). \
+map(lambda x:Row(order_id=x[0],order_date=x[1],order_cat_id=x[2],order_status=x[3])).toDF()
+
+sqlContext.setConf("spark.sql.orc.compression.codec","snappy")
+orderDF.write.orc("/user/cloudera/problem4_ques7/output2")
+
+hdfs dfs -ls /user/cloudera/problem4_ques7/output
+
+hdfs dfs -ls /user/cloudera/problem4_ques7/output1
+
+hdfs dfs -ls /user/cloudera/problem4_ques7/output2
+
+orderDF.write.format("orc").option("compression","gzip").save("/user/cloudera/problem4_ques7/output4")
