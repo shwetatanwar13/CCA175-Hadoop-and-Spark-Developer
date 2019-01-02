@@ -1,0 +1,187 @@
+
+Problem 1:
+
+1.Using sqoop, import actor table into hdfs to folders /user/cloudera/sakila/actor. File should be loaded as Avro File and use snappy compression
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/sakila \
+--username root \
+--password cloudera \
+--table actor \
+--target-dir /user/cloudera/sakila/actor \
+--as-avrodatafile \
+--compress \
+--compression-codec org.apache.hadoop.io.compress.SnappyCodec
+
+hdfs dfs -ls /user/cloudera/sakila/actor
+
+hdfs dfs -cat /user/cloudera/sakila/actor/part-m-00003.avro | head
+
+2.Using sqoop, import actor_info  table into hdfs to folders /user/cloudera/problem1/actor_info. Files should be loaded as avro file and use snappy compression
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/sakila \
+--username root \
+--password cloudera \
+--table actor_info \
+--target-dir /user/cloudera/sakila/actor_info \
+--as-avrodatafile \
+-m 1 \
+--compress \
+--compression-codec org.apache.hadoop.io.compress.SnappyCodec
+
+hdfs dfs -ls /user/cloudera/sakila/actor_info
+
+3.Import all tables into hdfs excluding above tables in avro format with snappy comp
+
+sqoop-import-all-tables \
+--connect jdbc:mysql://quickstart.cloudera:3306/sakila \
+--username root \
+--password cloudera \
+--warehouse-dir /user/cloudera/sakila \
+--exclude-tables actor,actor_info,address,category,city,country,customer \
+--as-avrodatafile \
+--compress \
+--compression-codec org.apache.hadoop.io.compress.SnappyCodec \
+--autoreset-to-one-mapper
+
+hdfs dfs -ls /user/cloudera/sakila
+
+4.List last names of actors and the number of actors who have that last name, but only for names that are shared by at least two actors order by count desc
+
+Store the result as parquet file into hdfs using gzip compression under folder
+/user/cloudera/sakila/result4-parquet-gzip
+
+pyspark -packages com.databricks:spark-avro_2.10:2.0.1 --master yarn
+
+actor_DF=sqlContext.read.format("com.databricks.spark.avro"). \
+load("/user/cloudera/sakila/actor")
+
+sqlContext.setConf("spark.sql.parquet.compression.codec","gzip")
+
+actor_DF.registerTempTable("actor")
+
+resultDF=sqlContext.sql("select last_name,count(1) actor_count \
+from actor \
+group by last_name \
+having actor_count>1 \
+order by actor_count desc")
+
+resultDF.write.parquet("/user/cloudera/sakila/result4-parquet-gzip")
+
+hdfs dfs -ls /user/cloudera/sakila/result4-parquet-gzip
+
+5.Using the tables payment and customer and the JOIN command, list the total paid by each customer. List the customers alphabetically by last name.
+
+Store the result as parquet file into hdfs using snappy compression under folder
+/user/cloudera/sakila/result5-parquet-snappy
+
+paymentDF=sqlContext.read.format("com.databricks.spark.avro"). \
+load("/user/cloudera/sakila/payment")
+
+customerDF=sqlContext.read.format("com.databricks.spark.avro"). \
+load("/user/cloudera/sakila/customer")
+
+paymentDF.registerTempTable("payment")
+customerDF.registerTempTable("customer")
+
+resultDF=sqlContext.sql("select c.last_name,c.first_name,round(sum(p.amount),2) \
+from payment p inner join customer c \
+on p.customer_id = c.customer_id \
+group by c.last_name,c.first_name \
+order by c.last_name")
+
+resultDF.write.parquet("/user/cloudera/sakila/result5-parquet-snappy")
+
+hdfs dfs -ls /user/cloudera/sakila/result5-parquet-snappy
+
+
+6.Display the most frequently rented movies in descending order.
+
+Store the result as CSV file into hdfs using No compression under folder
+/user/cloudera/sakila/result6-csv
+
+filmDF=sqlContext.read.format("com.databricks.spark.avro"). \
+load("/user/cloudera/sakila/film")
+
+rentalDF=sqlContext.read.format("com.databricks.spark.avro"). \
+load("/user/cloudera/sakila/rental")
+
+inventoryDF=sqlContext.read.format("com.databricks.spark.avro"). \
+load("/user/cloudera/sakila/inventory")
+
+filmDF.registerTempTable("film")
+rentalDF.registerTempTable("rental")
+inventoryDF.registerTempTable("inventory")
+
+resultDF=sqlContext.sql("select concat(f.title,',',count(*)) \
+from film f,rental r,inventory i \
+where f.film_id =i.film_id \
+and i.inventory_id = r.inventory_id \
+group by f.title \
+order by count(*) desc")
+
+
+resultDF.coalesce(3).write.text("/user/cloudera/sakila/result6-csv")
+hdfs dfs -ls /user/cloudera/sakila/result6-csv
+
+
+7.List the top five genres in gross revenue in descending order. (Hint: you may need to use the following tables: category, film_category, inventory, payment, and rental)
+
+Store the result as CSV file into hdfs using No compression under folder
+/user/cloudera/sakila/result7-csv
+
+categoryDF=sqlContext.read.format("com.databricks.spark.avro"). \
+load("/user/cloudera/sakila/category")
+
+film_categoryDF=sqlContext.read.format("com.databricks.spark.avro"). \
+load("/user/cloudera/sakila/film_category")
+
+categoryDF.registerTempTable("category")
+film_categoryDF.registerTempTable("film_category")
+
+resultDF=sqlContext.sql("select concat(c.name,',',sum(p.amount),',') \
+from category c, film_category f, \
+inventory i, payment p,rental r \
+where c.category_id = f.category_id \
+and r.rental_id = p.rental_id \
+and f.film_id = i.film_id \
+group by c.name \
+order by gross_rev desc \
+limit 5")
+
+resultDF.write/user/cloudera/sakila/result7-csv
+
+8.create a mysql table named result and load data from /user/cloudera/sakila/result6-csv to mysql table named result
+
+create table result(
+title varchar(50),
+rent_count int)
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/sakila \
+--username root \
+--password cloudera \
+--table result \
+--export-dir /user/cloudera/sakila/result6-csv
+
+9.`sales_by_film_category`
+--
+-- Note that total sales will add up to >100% because
+-- some titles belong to more than 1 category
+
+save the data to hdfs using gzip compression as json file at 
+/user/cloudera/problem5/json-gzip
+
+resultDF=sqlContext.sql("select c.name Category,',',sum(p.amount) gross_rev \
+from category c, film_category f, \
+inventory i, payment p,rental r \
+where c.category_id = f.category_id \
+and r.rental_id = p.rental_id \
+and f.film_id = i.film_id \
+group by c.name \
+order by gross_rev desc \
+limit 5")
+
+resultDF.toJSON().saveAsTextFile("/user/cloudera/problem5/json-gzip")
+
