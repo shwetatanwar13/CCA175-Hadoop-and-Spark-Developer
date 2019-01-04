@@ -1,0 +1,314 @@
+gzip - org.apache.hadoop.io.compress.GzipCodec
+bzip2 - org.apache.hadoop.io.compress.BZip2Codec
+LZO - com.hadoop.compression.lzo.LzopCodec
+Snappy - org.apache.hadoop.io.compress.SnappyCodec
+Deflate - org.apache.hadoop.io.compress.DeflateCodec
+
+Pre-Work: Please perform these steps before solving the problem
+
+1. Login to MySQL using below commands on a fresh terminal window
+
+    mysql -u retail_dba -p
+
+    Password = cloudera
+
+2. Create a replica category table and name it category_replica
+
+    create table category_replica as select * from category
+
+3. Add primary key to the newly created table
+
+    alter table category_replica add primary key (category_id);
+
+4. Add two more columns
+
+    alter table category_replica add column (category_grade int, category_sentiment varchar(100))
+
+5. Run below two update statements to modify the data
+
+    update category_replica set category_grade = 1 ;
+
+    update category_replica set category_sentiment  = 'WEAK';
+
+    
+
+Problem 5: Above steps are important so please complete them successfully before attempting to solve the problem
+
+1.Using sqoop, import category_replica table from MYSQL into hdfs such that fields are separated by a '|' and lines are separated by '\n'. Null values are represented as -1 for numbers and "NOT-AVAILABLE" for strings. 
+Only records with category_id greater than or equal to 1 and less than or equal to 10 should be imported and use 3 mappers for importing. The destination file should be stored as a text file to directory  /user/cloudera/problem5/category-text. 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/sakila \
+--username root \
+--password cloudera \
+--table category_replica \
+--fields-terminated-by '|' \
+--lines-terminated-by '\n' \
+--null-non-string -1 \
+--null-string "NOT-AVAILABLE" \
+--target-dir /user/cloudera/problem5/category-text \
+--boundary-query 'select 1,10' \
+--as-textfile \
+--num-mappers 3
+
+hdfs dfs -ls /user/cloudera/problem5/category-text
+
+2.Using sqoop, import category_replica table from MYSQL into hdfs such that fields are separated by a '*' and lines are separated by '\n'. 
+Null values are represented as -1000 for numbers and "NA" for strings. Only records with category_id less than or equal to 11 should be imported and use 2 mappers for importing. The destination file should be stored as a text file to directory  /user/cloudera/problem5/category-text-part1. 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/sakila \
+--username root \
+--password cloudera \
+--table category_replica \
+--fields-terminated-by '*' \
+--lines-terminated-by '\n' \
+--null-non-string -1000 \
+--null-string "NA" \
+--target-dir /user/cloudera/problem5/category-text-part1 \
+--where 'category_id<11' \
+--as-textfile \
+--num-mappers 2
+
+hdfs dfs -ls /user/cloudera/problem5/category-text-part1
+
+3.Using sqoop, import category_replica table from MYSQL into hdfs such that fields are separated by a '*' and lines are separated by '\n'. Null values are represented as -1000 for numbers and "NA" for strings. Only records with category_id greater than 11 should be imported and use 5 mappers for importing. The destination file should be stored as a text file to directory  /user/cloudera/problem5/category-text-part2
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/sakila \
+--username root \
+--password cloudera \
+--table category_replica \
+--fields-terminated-by '*' \
+--lines-terminated-by '\n' \
+--null-non-string -1000 \
+--null-string "NA" \
+--target-dir /user/cloudera/problem5/category-text-part2 \
+--where 'category_id>=11' \
+--as-textfile \
+--num-mappers 5
+
+hdfs dfs -ls /user/cloudera/problem5/category-text-part2
+
+4.Using sqoop merge data available in /user/cloudera/problem5/category-text-part1 and /user/cloudera/problem5/category-text-part2 to produce a new set of files in /user/cloudera/problem5/category-text-both-parts
+
+
+sqoop-merge \
+--onto /user/cloudera/problem5/category-text-part1 \
+--new-data /user/cloudera/problem5/category-text-part2 \
+--target-dir /user/cloudera/problem5/category-text-both-parts \
+--class-name category_replica \
+--jar-file /tmp/sqoop-cloudera/compile/6dc6bf3d31701785c149387810da1242/category_replica.jar \
+--merge-key category_id
+
+hdfs dfs -ls /user/cloudera/problem5/category-text-both-parts
+
+5.Using sqoop do the following. Read the entire steps before you create the sqoop job.
+
+#create a sqoop job Import category_replica table as text file to directory /user/cloudera/problem5/category-incremental. Import all the records.
+
+sqoop-job --create import_category_replica \
+-- import \
+--connect jdbc:mysql://quickstart.cloudera/sakila \
+--username root \
+--password cloudera \
+--table category_replica \
+--target-dir /user/cloudera/problem5/category-incremental \
+--check-column category_id \
+--incremental append \
+--last-value 0
+
+sqoop-job --exec import_category_replica
+
+hdfs dfs -ls /user/cloudera/problem5/category-incremental
+
+#insert three more records to category_replica from mysql
+
+insert into category_replica values(18,'Teen',now(),1,'STRONG');
+insert into category_replica values(17,'Romantic',now(),1,'STRONG');
+
+#run the sqoop job again so that only newly added records can be pulled from mysql
+
+sqoop-job --exec import_category_replica
+
+hdfs dfs -ls /user/cloudera/problem5/category-incremental
+
+#insert 2 more records to category_replica from mysql and update 17 record 
+
+insert into category_replica values(19,'Vampires',now(),1,'STRONG');
+insert into category_replica values(20,'Mythical',now(),1,'STRONG');
+
+update category_replica set category_sentiment='SCARED',last_update='2019-01-05 00:00:00' where category_id = 17;
+
+merge the updated record
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/sakila \
+--username root \
+--password cloudera \
+--table category_replica \
+--target-dir /user/cloudera/problem5/category-incremental1 \
+--check-column last_update \
+--incremental lastmodified \
+--last-value '2019-01-03 16:48:55' \
+--merge-key category_id
+
+hdfs dfs -ls /user/cloudera/problem5/category-incremental1
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/sakila \
+--username root \
+--password cloudera \
+--table category_replica \
+--target-dir /user/cloudera/problem5/category-incremental 
+
+hdfs dfs -ls /user/cloudera/problem5/category-incremental
+
+#run the sqoop job again so that only newly added records can be pulled from mysql
+
+sqoop-job --exec import_category_replica
+hdfs dfs -ls /user/cloudera/problem5/category-incremental
+
+#Validate to make sure the records have not be duplicated in HDFS
+
+6.Using sqoop do the following. Read the entire steps before you create the sqoop job.
+
+create a hive table in database named problem5 using below command 
+
+create table category_hive (
+  category_id int,
+  name string,
+  last_update string,
+  category_grade int,
+  category_sentiment string
+
+7.create a sqoop job Import category_replica table as hive table to database named problem5. name the table as category_hive.
+
+sqoop-job --create import_category_replica_hive \
+-- import \
+--connect jdbc:mysql://quickstart.cloudera:3306/sakila \
+--username root \
+--password cloudera \
+--table category_replica \
+--hive-import \
+--hive-table category_hive \
+--hive-database problem5
+
+sqoop-job --exec import_category_replica_hive
+
+#insert three more records to category_replica from mysql
+
+insert into category_replica values(21,'Bollywood',now(),1,'STRONG');
+insert into category_replica values(22,'Spanish',now(),1,'STRONG');
+insert into category_replica values(23,'Russian',now(),1,'STRONG');
+
+#run the sqoop job again so that only newly added records can be pulled from mysql
+
+sqoop-job --delete import_category_replica_hive
+
+sqoop-job --create import_category_replica_hive \
+-- import \
+--connect jdbc:mysql://quickstart.cloudera:3306/sakila \
+--username root \
+--password cloudera \
+--table category_replica \
+--hive-import \
+--hive-table category_hive \
+--hive-database problem5 \
+--incremental append \
+--check-column category_id \
+--last-value 20
+
+sqoop-job --exec import_category_replica_hive
+
+
+#insert 2 more records to category_replica from mysql
+
+insert into category_replica values(24,'Thriller',now(),1,'STRONG');
+insert into category_replica values(25,'Parody',now(),1,'STRONG');
+
+#run the sqoop job again so that only newly added records can be pulled from mysql
+
+ sqoop-job --exec import_category_replica_hive
+
+#update 2 records in category_replica from mysql and import into hive.
+
+update category_replica set category_sentiment='Its Late',last_update=now() where category_id like '2%';
+
+#hive import doesnt support last modified so import into hive metadata
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/sakila \
+--username root \
+--password cloudera \
+--table category_replica \
+--fields-terminated-by '\001' \
+--target-dir /user/hive/warehouse/problem5.db/category_hive \
+--incremental lastmodified \
+--check-column last_update \
+--last-value '2019-01-03 20:26:22' \
+--merge-key category_id
+
+#Validate to make sure the records have not been duplicated in Hive table
+
+8.Using sqoop do the following. .
+
+#insert 2 more records into category_hive table using hive. 
+
+insert into category_hive values(26,'Emotional','2019-01-03 20:40:25',1,'SCARED');
+insert into table category_hive values(27,'French','2019-01-03 20:40:25',1,'SCARED');
+
+#create table in mysql using below command   
+
+create table category_external(
+  category_id int,
+  name varchar(30),
+  last_update varchar(30),
+  category_grade int,
+  category_sentiment varchar(30)
+  );
+
+  create table category_stage(
+  category_id int,
+  name varchar(30),
+  last_update varchar(30),
+  category_grade int,
+  category_sentiment varchar(30)
+  );
+
+#export data from category_hive (hive) table to (mysql) category_external table. 
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/sakila \
+--username root \
+--password cloudera \
+--table category_external \
+--export-dir /user/hive/warehouse/problem5.db/category_hive \
+--input-fields-terminated-by '\001' \
+--staging-table category_stage \
+--clear-staging-table \
+--update-key category_id \
+--update-mode allowinsert
+
+
+#insert 2 more records to category_hive table from hive
+
+insert into category_hive values(28,'Real Life','2019-01-03 22:13:25',1,'SCARED');
+insert into table category_hive values(29,'Biography','2019-01-03 22:13:25',1,'SCARED');
+
+#export data from category_hive table to category_external table. 
+
+#Staging table cannot be used when export is running in update mode.
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/sakila \
+--username root \
+--password cloudera \
+--table category_external \
+--export-dir /user/hive/warehouse/problem5.db/category_hive \
+--input-fields-terminated-by '\001' \
+--update-key category_id \
+--update-mode allowinsert
+
+
+#Validate to make sure the records have not be duplicated in mysql table
