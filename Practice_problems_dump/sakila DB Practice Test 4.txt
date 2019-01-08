@@ -1,0 +1,189 @@
+QUESTION 14 CORRECT TEXT Problem Scenario 86 : In Continuation of previous question, please accomplish following activities. 
+1. Select Maximum, minimum, average , Standard Deviation, and total quantity.
+
+ select max(product_price),min(product_price),avg(product_price),stddev(product_price),count(*)
+ from products_hive;
+
+
+2. Select minimum and maximum price for each product category.
+
+select product_category_id,max(product_price),min(product_price)
+from products_hive
+group by product_category_id;
+
+
+
+3. Select Maximum, minimum, average , Standard Deviation, and total quantity for each product code, hwoever make sure Average and Standard deviation will have maximum two decimal values.
+
+ select CAST(avg(product_price) AS DECIMAL(3,2))
+ from products_hive;
+
+  select avg(product_price)
+ from products_hive;
+
+ select round(avg(product_price),2)
+ from products_hive;
+
+
+
+4. Select all the product category and average price only where product count is more than or equal to 3.
+
+select product_category_id,round(avg(product_price),2)
+from products_hive
+group by product_category_id
+having count(*)>3;
+
+
+5. Select maximum, minimum , average and total of all the products for each code. Also produce the same across all the products.
+
+Problem Scenario 9 :
+You have been given following mysql database details as well as other info. 
+user=retail_dba 
+password=cloudera 
+database=retail_db 
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db
+
+Please accomplish following. 
+1. Import departments table in a directory.
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table departments \
+--target-dir /user/cloudera/dept
+
+2. Again import departments table same directory (However, directory already exist hence it should not overrride and append the results) 
+3. Also make sure your results fields are terminated by '|' and lines terminated by '\n\
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table departments \
+--target-dir /user/cloudera/dept \
+--fields-terminated-by '|' \
+--lines-terminated-by '\n' \
+--append
+
+hdfs dfs -ls /user/cloudera/dept
+
+Problem Scenario 24 : You have been given below comma separated employee information. 
+Data Set: 
+name,salary,sex,age 
+alok,100000,male,29 
+jatin,105000,male,32 
+yogesh,134000,male,39 
+ragini,112000,female,35 
+jyotsana,129000,female,39 
+valmiki,123000,male,29 
+Requirements: Use the netcat service on port 44444, and nc above data line by line. Please do the following activities. 
+
+1. Create a flume conf file using fastest channel, which write data in hive warehouse directory, in a table called flumemaleemployee (Create hive table as well tor given data). 
+2. While importing, make sure only male employee data is stored.
+
+a1.channels = c1
+
+# Describe/configure the source
+a1.sources.r1.type = netcat
+a1.sources.r1.bind = localhost
+a1.sources.r1.port = 44444
+a1.sources.r1.interceptors = i1
+a1.sources.r1.interceptors.i1.type = regex_filter
+a1.sources.r1.interceptors.i1.regex = male
+a1.sources.r1.interceptors.i1.excludeEvents = false
+
+# Describe the sink
+a1.sinks.k1.type = hdfs
+a1.sinks.k1.hdfs.path = /user/hive/warehouse/flume_male_employee
+
+# Use a channel which buffers events in memory
+a1.channels.c1.type = memory
+a1.channels.c1.capacity = 1000
+a1.channels.c1.transactionCapacity = 100
+
+# Bind the source and sink to the channel
+a1.sources.r1.channels = c1
+a1.sinks.k1.channel = c1
+
+
+
+QUESTION 20 CORRECT TEXT Problem Scenario 90 : 
+You have been given below two files course.txt id,course 1,Hadoop 2,Spark 3,HBase fee.txt id,fee 2,3900 3,4200 4,2900 Accomplish the following activities. 1. Select all the courses and their fees , whether fee is listed or not. 2. Select all the available fees and respective course. If course does not exists still list the fee 3. Select all the courses and their fees , whether fee is listed or not. However, ignore records having fee as null. 
+
+Problem Scenario 85 : In Continuation of previous question, please accomplish following activities. 1. Select all the columns from product table with output header as below. productID AS ID code AS Code name AS Description price AS 'Unit Price' 2. Select code and name both separated by ' -' and header name should be Product Description'. 3. Select all distinct prices. 4. Select distinct price and name combination. 5. Select all price data sorted by both code and productID combination. 6. count number of products. 7. Count number of products for each code.
+
+Problem Scenario 18 : You have been given following mysql database details as well as other info. user=retail_dba password=cloudera database=retail_db jdbc URL = jdbc:mysql://quickstart:3306/retail_db Now accomplish following activities. 1. Create mysql table as below. mysql --user=retail_dba -password=cloudera use retail_db CREATE TABLE IF NOT EXISTS departments_hive02(id int, department_name varchar(45), avg_salary int); show tables; 2. Now export data from hive table departments_hive01 in departments_hive02. While exporting, please note following. wherever there is a empty string it should be loaded as a null value in mysql. wherever there is -999 value for int field, it should be created as null 
+value. 
+
+Problem Statement
+
+Get daily revenue by product considering completed and closed orders.
+
+sqlContext.setConf("spark.sql.shuffle.partitions","4")
+
+res=sqlContext.sql("select o.order_date,p.product_name,round(sum(order_item_subtotal),2) daily_revenue from \
+o join oi \
+on o.order_id = oi.order_item_order_id \
+join p \
+on p.product_id = oi.order_item_product_id \
+where o.order_status in ('COMPLETED','CLOSED') \
+group by o.order_date,p.product_name \
+order by o.order_date,daily_revenue desc")
+
+Data need to be sorted in ascending order by date and then descending
+order by revenue computed for each product for each day.
+
+
+Data for orders and order_items is available in HDFS
+/public/retail_db/orders and /public/retail_db/order_items
+
+orderRDD=sc.textFile("/public/retail_db/orders")
+order_item_RDD=sc.textFile("/public/retail_db/order_items")
+
+order_item_id | order_item_order_id | order_item_product_id | order_item_quantity | order_item_subtotal | order_item_product_price
+
+Data for products is available locally under /data/retail_db/products
+
+hdfs dfs -get /data/retail_db/products /user/shwetatanwar13/
+
+productRDD=sc.textFile("/user/shwetatanwar13/products")
+
+order_itemDF=order_item_RDD.map(lambda x:(x.split(',')[1],x.split(',')[2],x.split(',')[4])).toDF(schema=["order_item_order_id","order_item_product_id","order_item_subtotal"])
+
+orderDF=orderRDD.map(lambda x:x.split(',')).toDF(schema=["order_id","order_date","customer_id","order_status"])
+
+productDF=productRDD.map(lambda x:(x.split(',')[0],x.split(',')[2])).toDF(schema=["product_id","product_name"])
+
+order_itemDF.registerTempTable("oi")
+orderDF.registerTempTable("o")
+productDF.registerTempTable("p")
+
+Final output need to be stored under
+HDFS location – avro format
+/user/YOUR_USER_ID/daily_revenue_avro_python
+
+res.write.format("com.databricks.spark.avro").save("/user/shwetatanwar13/daily_revenue_avro_python")
+
+HDFS location – text format
+/user/YOUR_USER_ID/daily_revenue_txt_python
+
+res=sqlContext.sql("select concat(o.order_date,'\t',p.product_name,'\t',round(sum(order_item_subtotal),2)) daily_revenue from \
+o join oi \
+on o.order_id = oi.order_item_order_id \
+join p \
+on p.product_id = oi.order_item_product_id \
+where o.order_status in ('COMPLETED','CLOSED') \
+group by o.order_date,p.product_name \
+order by o.order_date,daily_revenue desc")
+
+res.write.text("/user/shwetatanwar13/daily_revenue_txt_python")
+
+hdfs dfs -ls /user/shwetatanwar13/daily_revenue_txt_python2
+
+Local location /home/YOUR_USER_ID/daily_revenue_python
+
+hdfs dfs -get /user/shwetatanwar13/daily_revenue_txt_python2/* /home/shwetatanwar13/daily_revenue_python/
+
+Solution need to be stored under
+/home/YOUR_USER_ID/daily_revenue_python.txt 
