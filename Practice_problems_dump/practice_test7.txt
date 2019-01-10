@@ -1,0 +1,487 @@
+Problem Statement
+
+Get daily revenue by product considering completed and closed orders.
+
+sqlContext.sql("select p.product_name from
+order o join order_items oi
+on o.order_item = oi.order_item_order_id
+join product p
+on p.product_id = oi.order_product_id
+where o.order_status in ('COMPLETED','CLOSED'")
+
+Data need to be sorted in ascending order by date and then descending
+order by revenue computed for each product for each day.
+
+
+Data for orders and order_items is available in HDFS
+/public/retail_db/orders and /public/retail_db/order_items
+
+orderRDD=sc.textFile("/public/retail_db/orders")
+order_item_RDD=sc.textFile("/public/retail_db/order_items")
+
+
+Data for products is available locally under /data/retail_db/products
+
+hdfs dfs -get /data/retail_db/products /user/shwetatanwar13/
+
+Final output need to be stored under
+HDFS location – avro format
+/user/YOUR_USER_ID/daily_revenue_avro_python
+HDFS location – text format
+/user/YOUR_USER_ID/daily_revenue_txt_python
+Local location /home/YOUR_USER_ID/daily_revenue_python
+Solution need to be stored under
+/home/YOUR_USER_ID/daily_revenue_python.txt 
+
+
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--as-avrodatafile \
+--target-dir /user/cloudera/order_avro
+
+CREATE EXTERNAL TABLE orders_avro
+STORED AS AVRO
+LOCATION '/user/cloudera/order_avro'
+TBLPROPERTIES('avro.schema.url'='/user/cloudera/orders.avsc');
+
+hdfs dfs -put orders.avsc /user/cloudera/order_avro
+
+hdfs dfs -mv /user/cloudera/order_avro/orders.avsc /user/cloudera/
+
+select to_date(from_unixtime(int(order_date/1000))) from orders_avro limit 5;
+
+
+l = ["Hello", "How are you doing", "Let us perform word count", "As part of the word count program", "we will see how many times each word repeat"]
+
+sqlContext.sql("use retail_db")
+
+res=sqlContext.sql("select customer_id,concat(customer_fname,' ',customer_lname) from customers")
+res.write.format("com.databricks.spark.avro").save("")
+
+
+empDF=sqlContext.read.load("/data/hr_db/employees")
+
+sqlContext.sql("select customer_fname from customers"
+
+b) read data employee and department data avilable at /user/training/practice_data/employee/ and  /user/training/practice_data/department/ ,which is tab delimited and get all the departments ,which don't have any employees.
+
+
+empRDD=sc.textFile("/user/cloudera/hr_db/employees").map(lambda x:x.split('\t')[10])
+deptRDD=sc.textFile("/user/cloudera/hr_db/departments").map(lambda x:x.split('\t')[0])
+
+finalRDD=deptRDD.subtract(empRDD)
+
+     
+   , first_name
+   , last_name
+   , email
+   , phone_number
+   , hire_date
+   , job_id
+   , salary
+   , commission_pct
+   , manager_id
+   , department_id
+
+empDF=empRDD.map(lambda x:x.split(',')[10]).toDF(schema=["employee_id",])
+
+scenario 5:
+ read customer file and load status and count of customer in TX state as avro data file.
+
+ sqoop-import \
+ --connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+ --username root \
+ --password cloudera \
+ --query "select customer_state='TX'" \
+ --table customers \
+ --as-avrodatafile \
+
+********************************************************************************
+
+Problem 4:
+Import orders table from mysql as text file to the destination /user/training/problems5/text. Fields should be terminated by a tab character ("\t") character and lines should be terminated by new
+line character ("\n"). 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /user/training/problems5/text \
+--fields-terminated-by '\t' \
+--lines-terminated-by '\n' \
+--as-textfile
+
+hdfs dfs -ls /user/training/problems5/text
+hdfs dfs -tail /user/training/problems5/text/part-m-00003
+hdfs dfs -cat /user/training/problems5/text/part* | wc -l
+
+Import orders table from mysql  into hdfs to the destination /user/training/problems5/avro. File should be stored as avro file.
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /user/training/problems5/avro \
+--as-avrodatafile
+
+hdfs dfs -ls /user/training/problems5/avro
+
+Import orders table from mysql  into hdfs  to folders /user/training/problems5/parquet. File should be stored as parquet file.
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--as-parquetfile \
+--target-dir /user/training/problems5/parquet
+
+hdfs dfs -ls /user/training/problems5/parquet
+
+
+Transform/Convert data-files at /user/training/problems5/avro and store the converted file at the following locations and file formats
+
+save the data to hdfs using snappy compression as parquet file at /user/training/problems5/parquet-snappy-compress
+
+avroDF=sqlContext.read.format("com.databricks.spark.avro").load("/user/training/problems5/avro")
+
+#does not compress in snappy.defaults to gzip
+avroDF.write.option("codec","org.apache.hadoop.io.compress.SnappyCodec").parquet("/user/training/problems5/parquet-snappy-compress")
+
+hdfs dfs -ls /user/training/problems5/parquet-snappy-compress
+
+#does not compress in snappy.defaults to gzip
+avroDF.write.option("compression","snappy").parquet("/user/training/problems5/parquet-snappy-compress1")
+
+#only this does compression in snappy.Use this in exam
+sqlContext.setConf("spark.sql.parquet.compression.codec","snappy")
+
+avroDF.write.parquet("/user/training/problems5/parquet-snappy-compress2")
+
+save the data to hdfs using gzip compression as text file at /user/training/problems5/text-gzip-compress
+save the data to hdfs using no compression as sequence file at /user/training/problems5/sequence
+save the data to hdfs using snappy compression as text file at /user/training/problems5/text-snappy-compress
+
+Transform/Convert data-files at /user/training/problems5/parquet-snappy-compress and store the converted file at the following locations and file formats
+save the data to hdfs using no compression as parquet file at /user/training/problems5/parquet-no-compress
+
+parDF=sqlContext.read.parquet("/user/training/problems5/parquet-snappy-compress2")
+
+#doesnt work
+parDF.write.option("compression","uncompressed").parquet("/user/training/problems5/parquet-no-compress1")
+
+#Only below works
+sqlContext.setConf("spark.sql.parquet.compression.codec","uncompressed")
+parDF.write.option("compression","uncompressed").parquet("/user/training/problems5/parquet-no-compress2")
+
+hdfs dfs -ls user/training/problems5/parquet-no-compress2
+
+save the data to hdfs using snappy compression as avro file at /user/training/problems5/avro-snappy
+
+sqlContext.setConf("soark.sql.avro.compression.codec","snappy")
+parDF.write.format("com.databricks.spark.avro").save("/user/training/problems5/avro-snappy")
+hdfs dfs -ls /user/training/problems5/avro-snappy
+
+#Validate avro snappy compression
+hdfs dfs -cat /user/training/problems5/avro-snappy/part-r-00007-1fa943fc-8bc9-4508-b50d-1ad6003e3d3b.avro | head
+
+
+Transform/Convert data-files at /user/training/problems5/avro-snappy and store the converted file at the following locations and file formats
+save the data to hdfs using no compression as json file at /user/training/problems5/json-no-compress
+
+avroDF=sqlContext.read.format("com.databricks.spark.avro").load("/user/training/problems5/avro-snappy")
+
+#Both below approches produce same output
+
+avroDF.write.json("/user/training/problems5/json-no-compress")
+hdfs dfs -ls /user/training/problems5/json-no-compress
+
+{"order_id":68883,"order_date":1406098800000,"order_customer_id":5533,"order_status":"COMPLETE"}
+
+or
+
+avroDF.toJSON().saveAsTextFile("/user/training/problems5/json-no-compress_rdd")
+hdfs dfs -ls /user/training/problems5/json-no-compress_rdd
+
+{"order_id":68883,"order_date":1406098800000,"order_customer_id":5533,"order_status":"COMPLETE"}
+
+
+save the data to hdfs using gzip compression as json file at /user/training/problems5/json-gzip
+
+#this doesnt work
+sqlContext.setConf("spark.sql.json.compression.codec","gzip")
+avroDF.write.json("/user/training/problems5/json-gzip")
+hdfs dfs -ls /user/training/problems5/json-gzip
+
+OR
+
+#only this works work compression
+avroDF.toJSON().saveAsTextFile("/user/training/problems5/json-gzip_rdd",compressionCodecClass='org.apache.hadoop.io.compress.GzipCodec')
+hdfs dfs -ls /user/training/problems5/json-gzip_rdd
+
+Transform/Convert data-files at  /user/training/problems5/json-gzip and store the converted file at the following locations and file formats
+save the data to as comma separated text using gzip compression at /user/training/problems5/csv-gzip
+
+jsonDF=sqlContext.read.json("/user/training/problems5/json-gzip_rdd")
+
+rdd=jsonDF.map(lambda x:','.join(str(i) for i in x))
+
+rdd.saveAsTextFile("/user/training/problems5/csv-gzip",compressionCodecClass='org.apache.hadoop.io.compress.GzipCodec')
+
+hdfs dfs -ls /user/training/problems5/csv-gzip
+
+
+Using spark access data at /user/training/problems5/sequence and stored it back to hdfs using no compression as ORC file to HDFS to destination /user/training/problems5/orc 
+
+rdd=sc.sequenceFile("/user/training/problems5/sequence")
+
+Problem 27:
+
+Using sqoop copy data available in mysql products table to folder /user/cloudera/products on hdfs as text file. columns should be delimited by pipe '|'
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--target-dir /user/cloudera/products \
+--table products \
+--fields-terminated-by '|' \
+--as-textfile
+
+move all the files from /user/cloudera/products folder to /user/cloudera/problem2/products folder
+
+#For mv the destintaion directory should exist
+hdfs dfs -mkdir -p /user/cloudera/problem13/products/
+hdfs dfs -mv /user/cloudera/products/* /user/cloudera/problem13/products/
+
+Change permissions of all the files under /user/cloudera/problem13/products such that owner has read,write and execute permissions, group has read and write permissions whereas others have just read and execute permissions
+
+hdfs dfs -chmod 765 /user/cloudera/problem13/products/*
+
+read data in /user/cloudera/problem2/products and do the following operations using a) dataframes api b) spark sql c) RDDs aggregateByKey method. Your solution should have three sets of steps. Sort the resultant dataset by category id
+filter such that your RDD\DF has products whose price is lesser than 100 USD
+on the filtered data set find out the higest value in the product_price column under each category
+on the filtered data set also find out total products under each category
+on the filtered data set also find out the average price of the product under each category
+on the filtered data set also find out the minimum price of the product under each category
+store the result in avro file using snappy compression under these folders respectively
+
+"product_id","product_category_id","product_name","product_description","product_price","product_image"
+
+rdd=sc.textFile("/user/cloudera/problem13/products")
+df=rdd.map(lambda x:x.split('|')).toDF(schema=["product_id","product_category_id","product_name","product_description","product_price","product_image"
+])
+df.registerTempTable('products13')
+
+res=sqlContext.sql("select max(product_price),count(1) total_products, \
+avg(product_price) avg_price,min(product_price) \
+from products13 \
+where product_price<100 \
+group by product_category_id \
+order by product_category_id")
+
+res.show()
+
+sqlContext.setConf("spark.sql.avro.compression.codec","snappy")
+res.write.format("com.databricks.spark.avro").save("/user/cloudera/problem13/avr_products")
+
+hdfs dfs -ls /user/cloudera/problem13/avr_products
+********************************************************
+Using sqoop, import orders table into hdfs to folders /user/training/problems1/orders. File should be loaded as Avro File and use snappy compression
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--target-dir /user/training/problems1/orders \
+--table orders \
+--as-avrodatafile \
+--compress \
+--compression-codec 'org.apache.hadoop.io.compress.SnappyCodec'
+
+hdfs dfs -ls /user/training/problems1/orders
+
+
+Using sqoop, import order_items  table into hdfs to folders /user/training/problems1/order-items. Files should be loaded as avro file and use snappy compression
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--target-dir /user/training/problems1/order-items \
+--table order_items \
+--as-avrodatafile \
+--compress \
+--compression-codec 'org.apache.hadoop.io.compress.SnappyCodec'
+
+hdfs dfs -ls /user/training/problems1/order-items
+
+Using Spark load data at /user/training/problems1/orders and /user/training/problems1/orders-items items as dataframes. 
+
+order_itemsDF=sqlContext.read.format("com.databricks.spark.avro").load("/user/training/problems1/order-items")
+
+order_itemsDF.registerTempTable("order_items13")
+
+ordersDF=sqlContext.read.format("com.databricks.spark.avro").load("/user/training/problems1/orders")
+
+ordersDF.registerTempTable("orders13")
+
+Expected Intermediate Result: 
+Order_Date , Order_status, total_orders, total_amount. 
+
+In plain english, please find total orders and total amount per status per day. 
+The result should be sorted by order date in descending, order status in ascending and total amount in descending and total orders in ascending. 
+
+
+Aggregation should be done using below methods. However, sorting can be done using a dataframe or RDD. Perform aggregation in each of the following ways.
+
+res=sqlContext.sql("select to_date(from_unixtime(order_date/1000)) order_date,order_status, \
+count(*) total_orders,round(sum(order_item_subtotal),2) total_amount \
+from orders13 o,order_items13 oi \
+where o.order_id = oi.order_item_order_id \
+group by order_date,order_status \
+order by order_date desc,order_status,total_amount desc,total_orders")
+
+ Store the result as parquet file into hdfs using gzip compression under folder
+/user/training/problems13/result-gzip
+
+sqlContext.setConf("spark.sql.parquet.compression.codec","gzip")
+
+res.coalesce(2).write.parquet("/user/training/problems13/result-gzip")
+
+hdfs dfs -ls /user/training/problems13/result-gzip
+
+Store the result as parquet file into hdfs using snappy compression under folder
+/user/training/problems13/result-snappy
+
+sqlContext.setConf("spark.sql.parquet.compression.codec","snappy")
+
+res.coalesce(2).write.parquet("/user/training/problems13/result-snappy")
+
+hdfs dfs -ls /user/training/problems13/result-snappy
+
+Store the result as CSV file into hdfs using No compression under folder
+/user/training/problems13/result-csv
+
+There are 3 ways to do it:
+
+1) res.registerTempTable("result13")
+result=sqlContext.sql("select concat_ws(',',r.*) \
+from result13 r")
+
+result.write.text("/user/training/problems13/resultDF_csv")
+hdfs dfs -ls /user/training/problems13/resultDF_csv
+
+2) 
+result.map(lambda x:','.join(str(i) for i in x)).saveAsTextFile("/user/training/problems13/resultRDD_csv")
+hdfs dfs -ls /user/training/problems13/resultRDD_csv
+
+3)pyspark --packages com.databricks:spark-csv_2.10:1.4.0,com.databricks:spark-avro_2.10:2.0.1 --master yarn
+#header true in csvl
+df.write.options(header='true').format('com.databricks.spark.csv').save("/user/shwetatanwar13/problems13/resultDF_csv1")
+
+hdfs dfs -ls /user/shwetatanwar13/problems13/resultDF_csv
+
+result.write.options(header='true').format('com.databricks.spark.csv').save("/user/shwetatanwar13/problems13/resultDF_csv1")
+
+create a mysql table named result and load data from /user/training/problems1/result4b-csv to mysql table named result_problems1 
+
+********************************************************************************************
+Problem 21:
+
+Duration: 20 to 30 minutes
+
+Tables should be in hive database - <YOUR_USER_ID>_retail_db_txt
+orders
+order_items
+customers
+
+sqoop-import-all-tables \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--warehouse-dir /user/training/retail_db \
+--autoreset-to-one-mapper
+
+hdfs dfs -ls /user/training/retail_db
+
+Time to create database and tables need not be counted. Make sure to go back to Spark SQL module and create tables and load data
+
+Get details of top 5 customers by revenue for each month.
+
+ordersrdd=sc.textFile("/user/training/retail_db/orders")
+custrdd=sc.textFile("/user/training/retail_db/customers")
+order_itemsrdd=sc.textFile("/user/training/retail_db/order_items")
+
+ordersDF=ordersrdd.map(lambda x:x.split(',')).toDF(["order_id","order_date","order_customer_id","order_status"])
+ordersDF.show()
+
+custDF=custrdd.map(lambda x:(x.split(',')[0],x.split(',')[1],x.split(',')[2])). \
+toDF(["customer_id","customer_fname","customer_lname"])
+
+orderitemDF=order_itemsrdd.map(lambda x:(x.split(',')[1],x.split(',')[4],)).toDF(["order_item_order_id","order_item_subtotal"])
+
+custDF.registerTempTable("customers")
+ordersDF.registerTempTable("orders")
+orderitemDF.registerTempTable("order_items")
+
+#In hive string starts from 1,0 they are same,when using sum() inside rank we need to use group by
+res=sqlContext.sql("select * from(select customer_fname,customer_lname, \
+substr(o.order_date,0,7) month_rev, \
+round(sum(order_item_subtotal)) revenue, \
+dense_rank() over (partition by substr(o.order_date,0,7) \
+order by sum(order_item_subtotal) desc) rank \
+from orders o join order_items oi \
+on order_id = order_item_order_id \
+join customers c \
+on order_customer_id = customer_id \
+group by customer_fname,customer_lname,substr(o.order_date,0,7) \
+order by month_rev,rank)q \
+where rank<=5")
+
+
+res1=sqlContext.sql("select * from(select customer_fname,customer_lname, \
+month,total_amount_per_month, \
+dense_rank() over (partition by month order by total_amount_per_month desc) as rnk \
+from (select distinct * from \
+(select c.customer_fname,c.customer_lname,substr(o.order_date,1,7) month, \
+sum(order_item_subtotal) total_amount_per_month from \
+customers c join orders o on o.order_customer_id=c.customer_id \
+join order_items oi on o.order_id=oi.order_item_order_id \
+group by customer_fname,customer_lname, \
+substr(o.order_date,1,7))q)p)e \
+where rnk <=5 order by month,total_amount_per_month desc")
+
+
+select GROUP_CONCAT(column_name ORDER BY ordinal_position)
+from information_schema.columns
+where table_schema = 'retail_db'
+and table_name='order_items'
+order by table_name,ordinal_position;
+
+We need to get all the details of the customer along with month and revenue per month
+
+Data need to be sorted by month in ascending order and revenue per month in descending order
+
+Create table top5_customers_per_month in <YOUR_USER_ID>_retail_db_txt
+
+create database retail_db_txt;
+
+sqlContext.sql("use retail_db_txt")
+
+res.coalesce(2).saveAsTable("top5_customers_per_month")
+
+Insert the output into the newly created table
+
+res.saveAsTable("top5_customers_per_month")
+res.write.saveAsTable("top5_customers_per_month")
