@@ -1,0 +1,108 @@
+Problem 22:
+
+find all the customer ,who purchased order in 2013-07 as well in 2014-07
+
+res=sqlContext.sql("select c.* ,substr(order_date,1,7) buy_month \
+from customers c join orders o \
+on c.customer_id = o.order_customer_id \
+where substr(order_date,1,7) like '2013-07' \
+or substr(order_date,1,7) like '2014-07' \
+order by buy_month").show()
+
+res.write.parquet("/user/cloudera/par")
+
+******************************************************************************
+
+Problem 20:
+
+task 1: export and load the only emp_id | emp_lname | emp_fname | emp_dob    | age  | sal  | emp_doj  in mysql table emp_export_test in database cca175problem1. from file having structure as mentioned below 
+with columns emp_id,emp_fname,emp_lname,emp_age,emp_sal,emp_dob,emp_city,emp_state,emp_zip,emp_deptid
+
+create table emp_export_test(
+emp_id int,
+emp_lname varchar(30),
+emp_fname varchar(30),
+emp_dob date,
+age int,
+sal int,
+emp_doj date
+);
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/hr_db \
+--username root \
+--password cloudera \
+--table emp_export_test \
+--export-dir /user/cloudera/hr_db/employees \
+--input-fields-terminated-by ',' \
+--columns emp_id,emp_fname,emp_lname,age,sal,emp_dob,emp_doj
+
+**********************************************************************************
+
+
+problem 16:
+•	Data is available in HDFS file system under /user/training/CRIME_DATA/Crimes.csv
+
+
+hdfs dfs -mkdir -p /user/training/CRIME_DATA/
+hdfs dfs -put /home/cloudera/Downloads/Crime_Incidents_2008-2016october.csv /user/training/CRIME_DATA/
+
+•	Structure of data (ID,Case Number,Date,Block,IUCR,Primary Type,Description,Location Description,Arrest,Domestic,Beat,District,Ward,Community Area,FBI Code,X Coordinate,Y Coordinate,Year,Updated On,Latitude,Longitude,Location)
+
+File format - text file
+•	Delimiter - “,” (use regex while splitting split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1), as there are some fields with comma and enclosed using double quotes.
+
+import regex
+crimerdd=sc.textFile("/user/training/CRIME_DATA/")
+
+crimeDF=crimerdd.map(lambda x:x.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)[6]).toDF("")
+
+
+•	Get top 3 crime types based on number of incidents in RESIDENCE area using “Location Description”
+
+crimeDF=crimerdd.map(lambda x:x.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)[6]).toDF(" ")
+
+
+
+•	Store the result in HDFS path /user/<YOUR_USER_ID>/solutions14/RESIDENCE_AREA_CRIMINAL_TYPE_DATA
+
+
+•	Output Fields: Crime Type, Number of Incidents
+
+
+•	Output File Format: JSON
+•	Output Delimiter: N/A
+•	Output Compression: Not he salary and insert new records .
+
+
+*****************************************************************************
+
+Problem 15:
+
+	Data is available in local file system /data/retail_db
+	Source directories: /data/retail_db/orders and /data/retail_db/customers
+	Source delimiter: comma (",")
+	Source Columns - orders - order_id, order_date, order_customer_id, order_status
+	Source Columns - customers - customer_id, customer_fname, customer_lname and many more
+	Get the customers who have not placed any orders, sorted by customer_lname and then customer_fname
+	Target Columns: customer_lname, customer_fname
+	Number of files - 1
+	Target Directory: /user/<YOUR_USER_ID>/solutions/solutions02/inactive_customers
+	Target File Format: TEXT
+	Target Delimiter: comma (“,”)
+	Compression: N/A
+
+*********************************************************************************
+
+problem 13:
+
+export the data from avro file at location /user/training/solution12/avro to mysql database inside the table dept_avg_sal_export in database 
+employees_export
+
+*************************************************************************************
+
+problem 12:
+
+Read sequence file at location and find average salary of Accounts department and save the result in avro format at 
+location /user/training/solution12/avro. and orc format at location /user/training/solution12/orc
+SequenceFile("/user/training/solution10/uncompressed/sequence")
