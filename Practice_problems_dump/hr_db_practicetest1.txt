@@ -1,0 +1,223 @@
+Practice Test
+
+scenario1:load customers data available in metastore and save customer_id and concatenate customer_fname --space --customer lname and save as avro file.
+
+create database hr_db;
+
+CREATE TABLE customers (
+  customer_id int(11),
+  customer_fname varchar(45) ,
+  customer_lname varchar(45) ,
+  customer_email varchar(45) ,
+  customer_password varchar(45) ,
+  customer_street varchar(255) ,
+  customer_city varchar(45) ,
+  customer_state varchar(45) ,
+  customer_zipcode varchar(45)
+  );
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table customers \
+--hive-import \
+--hive-database hr_db \
+--hive-table customers
+
+hdfs dfs -ls /user/hive/warehouse/hr_db.db/customers
+
+sqlContext.sql("use hr_db")
+res=sqlContext.sql("select customer_id,concat(customer_fname,' ',customer_lname) customer_name \
+from customers")
+res.write.format("com.databricks.spark.avro").save("/user/cloudera/9Jan19/avro")
+
+hdfs dfs -ls /user/cloudera/9Jan19/avro
+
+
+
+Scenario2:
+
+Import all rows from the table customer in mysql having lastname as smith.
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table customers \
+--target-dir /user/cloudera/9Jan19/cust_lname_smith \
+--where "customer_lname='smith'"
+
+hdfs dfs /user/cloudera/9Jan19/cust_lname_smith
+
+Scenario 3:
+
+Read employees text file which tab seperated and write only first 7 columns as textfile back to hdfs with | as delimiter in file /user/training/emp_select_txt/.
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/hr_db \
+--username root \
+--password cloudera \
+--table employees \
+--target-dir /user/training/emp_select_txt/ \
+--columns employee_id,first_name,last_name,email,phone_number,hire_date,job_id \
+--fields-terminated-by '\t'
+
+hdfs dfs -ls /user/training/emp_select_txt/
+
+Scenario 4:
+
+a) read data employee and department data avilable at /user/training/practice_data/employee/ and  /user/training/practice_data/department/ ,which is tab delimited and get the employee_id and theier department.
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/hr_db \
+--username root \
+--password cloudera \
+--table employees \
+--target-dir /user/training/practice_data/employee/ \
+--fields-terminated-by '\t'
+
+hdfs dfs -ls /user/training/practice_data/employee/
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/hr_db \
+--username root \
+--password cloudera \
+--table departments \
+--target-dir /user/training/practice_data/department/ \
+--fields-terminated-by '\t'
+
+hdfs dfs -ls /user/training/practice_data/department/
+
+empRDD=sc.textFile("/user/training/practice_data/employee/")
+deptRDD=sc.textFile("/user/training/practice_data/department/")
+
+empDF=empRDD.map(lambda x:(x.split('\t')[0],x.split('\t')[1],x.split('\t')[2],x.split('\t')[10])).toDF(["employee_id","first_name","last_name","department_id"])
+
+empDF.registerTempTable('emp')
+
+deptDF=deptRDD.map(lambda x:(x.split('\t')[0],x.split('\t')[1])).toDF(["department_id","department_name"])
+deptDF.registerTempTable('dept')
+
+res=sqlContext.sql("select e.first_name,e.last_name,d.department_name \
+from emp e,dept d \
+where e.department_id = d.department_id")
+
+res.show()
+
+b) read data employee and department data avilable at /user/training/practice_data/employee/ and  
+/user/training/practice_data/department/ ,which is text delimited and get the inactive employees not assigned to any department.
+
+res=sqlContext.sql("select e.first_name,e.last_name \
+from emp e \
+where e.department_id is null")
+
+
+scenario 5:
+read customer file and load state and count of customer in TX state as avro data file.
+
+custRDD=sc.textFile("/user/hive/warehouse/hr_db.db/customers")
+final=custRDD.filter(lambda x:x.split('\001')[7]=='TX').map(lambda x:(x.split('\001')[7],1)).reduceByKey(lambda x,y:x+y)
+
+finalDF=final.toDF(["state","count"])
+
+finalDF.write.format("com.databricks.spark.avro").save("/user/training/sol5/avro_state_TX/")
+hdfs dfs -ls /user/training/sol5/avro_state_TX/
+
+
+Problem 6:Load Dept and Employees data into MYSQL database employees_info into employee and dept table as shown below.
+
+create database employees_info;
+
+use employees_info;
+
+CREATE TABLE employees (
+  employee_id int(6),
+  first_name varchar(20),
+  last_name varchar(25),
+  email varchar(25),
+  phone_number varchar(20),
+  hire_date date,
+  job_id varchar(10),
+  salary decimal(8,2),
+  commission_pct decimal(2,2),
+  manager_id int(6),
+  department_id int(4))
+
+  CREATE TABLE departments (
+  department_id int(4),
+  department_name varchar(30),
+  manager_id int(6),
+  location_id int(4));
+
+/user/training/practice_data/department/
+/user/training/practice_data/employee/
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/employees_info \
+--username root \
+--password cloudera \
+--table employees \
+--export-dir /user/training/practice_data/employee/ \
+--input-fields-terminated-by '\t'
+
+
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/employees_info \
+--username root \
+--password cloudera \
+--table departments \
+--export-dir /user/training/practice_data/department/ \
+--input-fields-terminated-by '\t'
+
+
+problem 7:There is a employee_info database in mysql. Import all tables in HDFS in 'solution' database in hive.Save all table data in  warehouse directory '/user/hive/warehouse/solution' 
+Tables should be accessible via hive.Tables data should be tab separated format.
+
+create database solution;
+
+sqoop-import-all-tables \
+--connect jdbc:mysql://quickstart.cloudera:3306/employees_info \
+--username root \
+--password cloudera \
+--hive-import \
+--hive-database solution \
+--warehouse-dir /user/hive/warehouse/solution.db \
+--fields-terminated-by '\t' \
+-m 1
+
+hdfs dfs -ls /user/hive/warehouse/solution.db/employees
+
+8.Write a spark script to read employee data from warehouse. Modify data to be tab separated instead of comma separated and save results in '/user/training/solution3'
+
+
+empRDD=sc.textFile("/user/hive/warehouse/solution.db/employees")
+empDF=empRDD.map(lambda x:x.split('\t')).toDF(["employee_id","first_name","last_name","email","phone_number","hire_date","job_id","salary","commission_pct","manager_id","department_id"])
+
+select GROUP_CONCAT(column_name ORDER BY ordinal_position)
+from information_schema.columns
+where table_schema = 'hr_db'
+and table_name='employees'
+order by table_name,ordinal_position;
+
+empDF.map(lambda x:'\t'.join(str(i) for i in x)).saveAsTextFile("/user/training/solution3")
+
+hdfs dfs -ls /user/training/solution3
+
+9.Write spark script to find the employees whose live in MO state  and salary is in range '$2,000 - $10,000'. data available at /user/hive/warehouse/solution.db/employee .
+ Save the results in '/user/training/solution4/text' 
+
+Output should be in following format -
+ 
+employeeID,emp_fame(space)emp_lname,salary
+
+sqlContext.sql("use solution")
+
+res=sqlContext.sql("select concat_ws(',',e.*) \
+from employees e \
+where salary between 2000 and 10000")
+
+res.write.text("/user/training/solution4/text")
+
+hdfs dfs -ls /user/training/solution4/text
