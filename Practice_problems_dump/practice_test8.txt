@@ -1,0 +1,575 @@
+**********************Exam11Jan2018******************************************
+
+Problem 1 :
+Import orders table from mysql (db: retail_db , user : retail_user , password : xxxx)
+Import only records that are in “COMPLETE” status
+Import all columns other than customer id
+Save the imported data as text and tab delimitted in this hdfs location /user/yourusername/jay/problem1/
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--where "order_status='COMPLETE'" \
+--columns order_id,order_date,order_status  \
+--fields-terminated-by '\t' \
+--target-dir /user/shweta13/problem1/ \
+--as-textfile
+
+hdfs dfs -ls /user/shweta13/problem1/
+
+
+Problem 2
+Import orders table from mysql (db: retail_db , user : retail_user , password : xxxx)
+Import all records and columns from Orders table
+Save the imported data as text and tab delimitted in this hdfs location /user/yourusername/jay/problem2/
+
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /user/shweta13/problem2/ \
+--fields-terminated-by '\t' \
+--as-textfile
+
+hdfs dfs -ls /user/shweta13/problem2
+
+Problem 3 :
+Export orders data into mysql
+Input Source : /user/shweta13/problem2
+Target Table : Mysql . DB = retail_exp. Table Name : shweta_mock_orders
+Reason for somealias in table name is … to not overwrite others in mysql db in labs
+
+create database retail_exp;
+
+use retail_exp;
+
+create table shweta_mock_orders(
+ order_id int(11),
+ order_date datetime,
+ order_customer_id int(11),
+ order_status varchar(45))
+
+
+sqoop-export \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_exp \
+--username root \
+--password cloudera \
+--table shweta_mock_orders \
+--input-fields-terminated-by '\t' \
+--export-dir /user/shweta13/problem2
+
+
+
+Problem 4 :
+Read data from hive and perform transformation and save it back in HDFS
+Read table populated from Problem 3 (shweta_mock_orders)
+Produce output in this format (2 fields) , sort by order count in descending and save it as avro with snappy compression in hdfs location /user/shweta13/problem4/avro-snappy
+ORDER_STATUS : ORDER_COUNT
+COMPLETE 54
+CANCELLED 89
+INPROGRESS 23
+
+Save above output in avro snappy compression in avro format in hdfs location /user/shweta13/problem4/avro-snappy
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--query 'select order_status,count(*) order_count from 
+orders where $CONDITIONS group by order_status order by order_count' \
+--as-avrodatafile \
+--target-dir /user/shweta13/problem4/avro-snappy \
+--compress \
+--compression-codec org.apache.hadoop.io.compress.SnappyCodec \
+-m 1
+
+hdfs dfs -ls /user/shweta13/problem4/avro-snappy
+hdfs dfs -cat /user/shweta13/problem4/avro-snappy/part-m-00000.avro|head
+
+Problem 5 :
+
+Import orders table from mysql (db: retail_db , user : retail_user , password : xxxx)
+Import all records and columns from Orders table
+Save the imported data as avro and snappy compression in hdfs location /user/shweta13/problem5-avro-snappy/
+
+Read above hdfs data
+Consider orders only in “COMPLETE” status and order id between 1000 and 50000 (1001 to 49999)
+Save the output (only 2 columns orderid and orderstatus) in parquet format with gzip compression in location /user/shweta13/problem5-parquet-gzip/
+Advance : Try if you can save output only in 2 files (Tip : use coalesce(2))
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /user/shweta13/problem5-avro-snappy/ \
+--as-avrodatafile \
+--compress \
+--compression-codec org.apache.hadoop.io.compress.SnappyCodec
+
+hdfs dfs -ls /user/shweta13/problem5-avro-snappy/
+
+pyspark --master yarn --num-executors 6 --executor-cores 2 --executor-memory 3g \
+--packages com.databricks:spark-avro_2.10:2.0.1
+
+df=sqlContext.read.format("com.databricks.spark.avro").load("/user/shweta13/problem5-avro-snappy/")
+df.registerTempTable("order_9jan")
+
+sqlContext.setConf("spark.sql.parquet.compression.codec","gzip")
+
+res=sqlContext.sql("select concat(order_id,',',order_status) \
+from order_9jan \
+where order_id between 1001 and 49999 \
+and order_status='COMPLETE'")
+
+res.coalesce(2).write.parquet("/user/shweta13/problem5-parquet-gzip")
+
+hdfs dfs -ls /user/shweta13/problem5-parquet-gzip
+
+
+Problem 6 :
+
+Import orders table from mysql (db: retail_db , user : retail_user , password : xxxx)
+Import all records and columns from Orders table
+Save the imported data as text and tab delimitted in this hdfs location /user/shweta13/problem6/orders/
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /user/shweta13/problem6/orders/ \
+--fields-terminated-by '\t'
+
+hdfs dfs -ls /user/shweta13/problem6/orders/
+
+Import order_items table from mysql (db: retail_db , user : retail_user , password : xxxx)
+Import all records and columns from Order_items table
+Save the imported data as text and tab delimitted in this hdfs location /user/shweta13/problem6/order_items/
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table order_items \
+--target-dir /user/shweta13/problem6/order_items/ \
+--fields-terminated-by '\t'
+
+hdfs dfs -ls /user/shweta13/problem6/order_items/
+
+Read orders data from above HDFS location
+
+orderrdd=sc.textFile('/user/shweta13/problem6/orders/')
+
+Read order items data form above HDFS location
+
+orderitemsrdd=sc.textFile('/user/shweta13/problem6/order_items/')
+
+Produce output in this format (price and total should be treated as decimals)
+Consider only CLOSED & COMPLETE orders
+ORDER_ID ORDER_ITEM_ID PRODUCT_PRICE ORDER_SUBTOTAL ORDER_TOTAL
+
+Note : ORDER_TOTAL = combined total price for this order
+
+orderDF=orderrdd.map(lambda x:x.split('\t')).toDF(["order_item","order_date","order_customer_id", "order_status"])
+
+orderitemsDF=orderitemsrdd.map(lambda x:(x.split('\t')[0],x.split('\t')[1],x.split('\t')[4],x.split('\t')[5])).toDF([
+"order_item_id","order_item_order_id","order_item_subtotal","order_item_product_price"])
+
+orderDF.registerTempTable("orders6")
+orderitemsDF.registerTempTable("order_items6")
+
+res=sqlContext.sql("select order_item,order_item_id,order_item_product_price, \
+order_item_subtotal,sum(order_item_subtotal) over (partition by order_item) \
+from orders6 o join order_items6 oi \
+on o.order_item = oi.order_item_order_id \
+where order_status in ('CLOSED','COMPLETE') \
+order by order_item")
+
+Save above output as ORC in hive table “shweta_mock_orderdetails”
+(Tip : Try saving into hive table from DF directly without explicit table creation manually)
+
+res.write.format('orc').saveAsTable("shweta_mock_orderdetails")
+
+Note : This problem updated on Jun 4 with more details to reduce ambiguity based on received feedback/comments from users. (Thank You )
+
+
+Problem 7:
+
+Import order_items table from mysql (db: retail_db , user : retail_user , password : xxxx)
+Import all records and columns from Order_items table
+Save the imported data as parquet in this hdfs location /user/yourusername/jay/problem7/order-items/
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table order_items \
+--target-dir /user/shweta13/problem7/order_items/ \
+--as-parquetfile
+hdfs dfs -ls /user/shweta13/problem7/order_items/
+
+Import products table from mysql (db: retail_db , user : retail_user , password : xxxx)
+Import all records and columns from products table
+Save the imported data as avro in this hdfs location /user/yourusername/jay/problem7/products/
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table products \
+--target-dir /user/shweta13/problem7/products/ \
+--as-avrodatafile \
+-m 8
+
+Read above orderitems and products from HDFS location
+Produce this output :
+
+ORDER_ITEM_ORDER_ID PRODUCT_ID PRODUCT_NAME PRODUCT_PRICE ORDER_SUBTOTAL
+
+Save above output as avro snappy in hdfs location /user/yourusername/jay/problem7/output-avro-snappy/
+
+Note : This problem updated on Jun 4 with more details to reduce ambiguity based on received feedback/comments from users. (Thank You )
+
+oi=sqlContext.read.parquet("/user/shweta13/problem7/order_items/")
+p=sqlContext.read.format("com.databricks.spark.avro").load("/user/shweta13/problem7/products/")
+
+oi.registerTempTable("oi7")
+p.registerTempTable("p7")
+
+
+sqlContext.setConf("spark.sql.avro.compression.codec","snappy")
+
+res=sqlContext.sql("select order_item_order_id,product_id,product_name,product_price,order_item_subtotal \
+from oi7 o join p7 p \
+on p.product_id = o.order_item_product_id")
+
+res.coalesce(2).write.format("com.databricks.spark.avro").save("/user/shweta13/problem7/output-avro-snappy/")
+
+hdfs dfs /user/shweta13/problem7/output-avro-snappy/
+
+Problem 8
+
+Read order item from /user/yourusername/jay/problem7/order-items/
+Read products from /user/yourusername/jay/problem7/products/
+
+Produce output that shows product id and total no. of orders for each product id.
+Output should be in this format… sorted by order count descending
+If any product id has no order then order count for that product id should be “0”
+
+PRODUCT_ID PRODUCT_PRICE ORDER_COUNT
+
+Output should be saved as sequence file with Key=ProductID , Value = PRODUCT_ID|PRODUCT_PRICE|ORDER_COUNT (pipe separated)
+
+oi=sqlContext.read.parquet("/user/shweta13/problem7/order_items/")
+p=sqlContext.read.format("com.databricks.spark.avro").load("/user/shweta13/problem7/products/")
+
+oi.registerTempTable("oi7")
+p.registerTempTable("p7")
+
+
+res=sqlContext.sql("select product_id,product_price,count(order_item_id) order_count \
+from oi7 o join p7 p \
+on p.product_id = o.order_item_product_id \
+group by product_id,product_price")
+
+res.map(lambda x:(str(x[0]),str(x[0])+'|'+str(x[1])+'|'+str(x[2]))).saveAsSequenceFile("/user/shweta13/problem7/seq/")
+
+hdfs dfs -ls /user/shweta13/problem7/seq/
+
+Problem 9
+
+Import orders table from mysql (db: retail_db , user : retail_user , password : xxxx)
+Import all records and columns from Orders table
+
+Save the imported data as avro in this hdfs location /user/yourusername/jay/problem9/orders-avro/
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/retail_db \
+--username root \
+--password cloudera \
+--table orders \
+--target-dir /user/shweta13/problem9/orders-avro/ \
+--as-avrodatafile
+
+Read above Avro orders data
+Convert to JSON
+Save JSON text file in hdfs location /user/yourusername/jay/problem9/orders-json/
+
+avdf=sqlContext.read.format("com.databricks.spark.avro").load("/user/shweta13/problem9/orders-avro/")
+
+avdf.write.json("/user/shweta13/problem9/orders-json/")
+
+Read json data from /user/yourusername/jay/problem9/orders-json/
+Consider only “COMPLETE” orders.
+
+df=sqlContext.read.json("/user/shweta13/problem9/orders-json/")
+
+df.registerTempTable("order9")
+
+res=sqlContext.sql("select order_id,order_status \
+from order9 \
+where order_status ='COMPLETE'")
+
+
+Save orderid and order status (just 2 columns) as JSON text file in location /user/yourusername/jay/problem9/orders-mini-json/
+
+res.write.json("/user/shweta13/problem9/orders-mini-json/")
+
+hdfs dfs -ls /user/shweta13/problem9/orders-mini-json/
+
+*******************************************************************************
+Question 1:
+Problem Scenario: 
+
+You have been given following mysql database details as well as other info.
+
+user=retail_dba
+password=cloudera
+database=retail_db
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db
+Please accomplish following.
+1. Import departments table in a directory called departments.
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/retail_db \
+--username root \
+--password cloudera \
+--table departments \
+--target-dir /user/cloudera/SP1/departments 
+
+hdfs dfs -ls /user/cloudera/SP1/departments
+
+2. Once import is done, please insert following 5 records in departments mysql table.
+
+Insert into departments values (15,'HR');
+Insert into departments values (16,'Account');
+Insert into departments values (17,'Logistics');
+Insert into departments values (18,'IT');
+Insert into departments values (19,'Reglatory');
+
+3. Now import only new inserted records and append to existing directory . which has been created in first step.
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/retail_db \
+--username root \
+--password cloudera \
+--table departments \
+--target-dir /user/cloudera/SP1/departments \
+--check-column department_id \
+--last-value 14 \
+--incremental append
+
+hdfs dfs -ls /user/cloudera/SP1/departments
+
+__________________________________________________
+
+Question 2:
+Problem Scenario: 
+
+You have been given below three files
+
+product.csv (Create this file in hdfs)
+
+productID,productCode,name,quantity,price,supplierid
+1 001,PEN,Pen Red,5000,1.23,501
+1 002,PEN,Pen Blue,8000,1.25,501
+1003,PEN,Pen Black,2000,1.25,501
+1004,PEC,Pencil 2B,10000,0.48,502
+1005,PEC,Pencil 2H,8000,0.49,502
+1006,PEC,Pencil HB,0,9999.99,502
+2001,PEC,Pencil 3B,500,0.52,501
+2002,PEC,Pencil 4B,200,0.62,501
+2003,PEC,Pencil 5B,100,0.73,501
+2004,PEC,Pencil 6B,500,0.47,502
+
+supplier.csv
+supplierid,name,phone
+501,ABC Traders,88881111
+502,XYZ Company,88882222
+503,QQ Corp,88883333
+
+products_suppliers.csv
+productID,supplierID
+2001,501
+2002,501
+2003,501
+2004,502
+2001,503
+Now accomplish all the queries given in solution.
+Select product, its price , its supplier name where product price is less than 0.6 using
+SparkSQL
+
+hdfs dfs -mkdir /user/cloudera/SP2/
+hdfs dfs -touchz /user/cloudera/SP2/product.csv
+hdfs dfs -appendToFile - /user/cloudera/SP2/product.csv
+
+hdfs dfs -mkdir /user/cloudera/SP2/
+hdfs dfs -touchz /user/cloudera/SP2/supplier.csv
+hdfs dfs -appendToFile - /user/cloudera/SP2/supplier.csv
+
+hdfs dfs -mkdir /user/cloudera/SP2/
+hdfs dfs -touchz /user/cloudera/SP2/products_suppliers.csv
+hdfs dfs -appendToFile - /user/cloudera/SP2/products_suppliers.csv
+
+productdf=sc.textFile("/user/cloudera/SP2/product.csv").map(lambda x:x.split(',')).toDF(["productID","productCode","name","quantity","price","supplierid"])
+
+supplierdf=sc.textFile("/user/cloudera/SP2/supplier.csv").map(lambda x:x.split(',')).toDF(["supplierid","name","phone"])
+
+psdf=sc.textFile("/user/cloudera/SP2/products_suppliers.csv").map(lambda x:x.split(',')).toDF([
+"productID","supplierID"])
+
+productdf.registerTempTable("product")
+supplierdf.registerTempTable("supplier")
+psdf.registerTempTable("products_suppliers")
+
+Select product, its price , its supplier name where product price is less than 0.6 using
+SparkSQL
+
+sqlContext.sql("select p.name,price,s.name \
+from product p join supplier s \
+where price<0.6").show()
+
+_______________________________________________________
+
+Question 4:
+Problem Scenario: 
+
+You need to implement near real time solutions for collecting information when submitted in file with below
+
+mkdir -p /tmp/SP4/spooldir2
+mkdir /tmp/SP4/primary
+mkdir /tmp/SP4/secondary
+
+Data
+echo "IBM,100,20160104" >>/tmp/SP4/spooldir2/.bb.txt
+echo "IBM,103,20160105" >>/tmp/SP4/spooldir2/.bb.txt
+mv /tmp/SP4/spooldir2/.bb.txt /tmp/SP4/spooldir2/bb.txt
+After few mins
+echo "IBM,100.2,20160104" >> /tmp/SP4/spooldir2/.dr.txt
+echo "IBM,103.1,20160105" >> /tmp/SP4/spooldir2/.dr.txt
+mv /tmp/SP4/spooldir2/.dr.txt /tmp/SP4/spooldir2/dr.txt
+You have been given below directory location (if not available than create it) /tmp/spooldir2
+.
+As soon as file committed in this directory that needs to be available in hdfs in
+/tmp/flume/primary as well as /tmp/flume/secondary location.
+However, note that/tmp/flume/secondary is optional, if transaction failed which writes in this directory need not to be rollback.
+Write a flume configuration file named flumeS.conf and use it to load data in hdfs with following additional properties .
+1 . Spool /tmp/spooldir2 directory
+2 . File prefix in hdfs should be events
+3 . File suffix should be .log
+4 . If file is not committed and in use than it should have _ as prefix.
+5 . Data should be written as text to hdfs
+
+# example.conf: A single-node Flume configuration
+
+# Name the components on this agent
+a1.sources = r1
+a1.sinks = k1 k2
+a1.channels = c1 c2
+
+# Describe/configure the source
+a1.sources.r1.type = spooldir
+a1.sources.r1.spoolDir = /tmp/SP4/spooldir2
+a1.sources.r1.selector.type = replicating
+a1.sources.r1.selector.optional = c2
+
+# Describe the sink
+a1.sinks.k1.type = hdfs
+a1.sinks.k1.hdfs.path = /tmp/SP4/primary
+a1.sinks.k1.hdfs.filePrefix = events
+a1.sinks.k1.hdfs.fileSuffix = .log
+a1.sinks.k1.hdfs.inUsePrefix = _
+a1.sinks.k1.hdfs.fileType = DataStream
+a1.sinks.k1.hdfs.writeFormat = text
+
+a1.sinks.k2.type = hdfs
+a1.sinks.k2.hdfs.path = /tmp/SP4/secondary
+a1.sinks.k2.hdfs.filePrefix = events
+a1.sinks.k2.hdfs.fileSuffix = .log
+a1.sinks.k2.hdfs.inUsePrefix = _
+a1.sinks.k2.hdfs.fileType = DataStream
+a1.sinks.k2.hdfs.writeFormat = text
+
+# Use a channel which buffers events in memory
+a1.channels.c1.type = memory
+a1.channels.c1.capacity = 1000
+a1.channels.c1.transactionCapacity = 100
+
+a1.channels.c2.type = memory
+a1.channels.c2.capacity = 1000
+a1.channels.c2.transactionCapacity = 100
+
+# Bind the source and sink to the channel
+a1.sources.r1.channels = c1
+a1.sinks.k1.channel = c1
+a1.sinks.k2.channel = c1
+
+flume-ng agent -n a1 -f /home/cloudera/flumetest/SP4.conf
+_________________________________________________________________________
+
+Question 10:
+Problem Scenario: 
+
+You have been given following mysql database details as well as other info.
+
+user=retail_dba
+password=cloudera
+database=retail_db
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db
+Please accomplish following activities.
+1. In mysql departments table please insert following record. Insert into departments values(9999, '"Data Science"1);
+2. Now there is a downstream system which will process dumps of this file. However, system is designed the way that it can process only files if fields are enlcosed in(') single quote and separate of the field should be (-} and line needs to be terminated by : (colon).
+3. If data itself contains the " (double quote } than it should be escaped by \.
+4. Please import the departments table in a directory called departments_enclosedby and file should be able to process by downstream system.
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera/retail_db \
+--username root \
+--password cloudera \
+--table departments \
+--enclosed-by ''' \
+--fields-terminated-by '-' \
+--lines-terminated-by ':' \
+--escaped-by '\' \
+--target-dir /user/cloudera/departments_enclosedby
+
+
+hdfs dfs -rmr /user/cloudera/departments_enclosedby
+
+******************************12JAn19**************************************************
+
+As per the link and FAQs, you will given multinode cluster and might have to process huge chunk of data. Based on that
+
+Understand the size of the cluster using cloudera manager, namenode web interface or resource manager web interface. You will be provided with the details either as bookmarks in the browser or ip address on which each of these services running. Here are the default port numbers
+Cloudera Manager 7180
+namenode 50070
+resource manager 8088
+If you do not see any details about cloudera manager, most likely it might be running on gateway node
+Understand volume of data you need to process
+Launch spark-shell or pyspark in yarn mode with num-executors - spark-shell --master yarn --num-executors NUMBER_OF_EXECUTORS
+If you are using spark sql, make sure to set spark.sql.shuffle.partitions to more accurate value. Default values is 200 and it can waste some of your valuable time
+Use numTasks to reduce number of tasks after shuffling. It is available for transformations such as join, reduceByKey, aggregateByKey etc. Consider this with care.
+In sqoop use --num-mapper or -m to increase number of mappers while importing or exporting the data. In case of import run sqoop eval command first and get number of records you need to import.
+sqoop eval also will confirm whether your JDBC URL and credentials are correct. It also confirms that you are able to access the table
+As per the video in the above section mysql will be running on gateway. If the port number is not specified then it will be 3306
+Each of these problems can be solved in multiple ways - use the approach you are comfortable with
+
+
+yarn-site.xml--Find ResourceManager Address(yarn.resourcemanager.webapp.address)
+core-site.xml--fs.defaultFS,io.compression.codecs
+hdfs-site.xml--blocksize,dfs.namenode.http-address,replication factor
+
+to get block details of a file
+
+hdfs fsck -blocks -
+
+By default spark takes 2g 
+
+#SPARK_EXECUTOR_INSTANCES="2" #Number of workers to start (Default: 2)
+#SPARK_EXECUTOR_CORES="1" #Number of cores for the workers (Default: 1).
+#SPARK_EXECUTOR_MEMORY="1G" #Memory per Worker (e.g. 1000M, 2G) (Default: 1G)
