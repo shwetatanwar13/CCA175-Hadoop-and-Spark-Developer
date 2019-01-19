@@ -1,0 +1,141 @@
+source /home/cloudera/Downloads/LearningSQL-MySQL-Script.sql
+
+1.Import ACCOUNT table from mysql as text file to the destination /user/cloudera/acct_trx/prob1/text. Fields should be terminated by a tab character ("\t") character and lines should be terminated by new line character ("\n"). 
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/acct_trx \
+--username root \
+--password cloudera \
+--table ACCOUNT \
+--fields-terminated-by '\t' \
+--as-textfile \
+--target-dir /user/cloudera/acct_trx/prob1/text \
+--lines-terminated-by '\n'
+
+hdfs dfs -ls /user/cloudera/acct_trx/prob1/text
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/acct_trx \
+--username root \
+--password cloudera \
+--query 'select count(*) from ACCOUNT'
+
+2.Import ACC_TRANSACTION table from mysql  into hdfs to the destination /user/cloudera/acct_trx/prob1/avro. File should be stored as avro file.
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/acct_trx \
+--username root \
+--password cloudera \
+--table ACC_TRANSACTION \
+--as-avrodatafile \
+--target-dir /user/cloudera/acct_trx/prob1/avro
+
+hdfs dfs -ls /user/cloudera/acct_trx/prob1/avro
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/acct_trx \
+--username root \
+--password cloudera \
+--query 'select count(*) from ACC_TRANSACTION'
+
+
+3.Import BRANCH table from mysql into hdfs to folders /user/cloudera/acct_trx/prob1/parquet. File should be stored as parquet file.
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/acct_trx \
+--username root \
+--password cloudera \
+--table BRANCH \
+--as-parquetfile \
+--target-dir /user/cloudera/acct_trx/prob1/parquet
+
+hdfs dfs -ls /user/cloudera/acct_trx/prob1/parquet
+
+sqoop-eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/acct_trx \
+--username root \
+--password cloudera \
+--query 'select count(*) from BRANCH'
+
+4.Transform/Convert data-files at /user/cloudera/acct_trx/avro and store the converted file at the following locations and file formats
+
+df=sqlContext.read.format("com.databricks.spark.avro").load("/user/cloudera/acct_trx/prob1/avro")
+
+#save the data to hdfs using snappy compression as parquet file at /user/cloudera/acct_trx/parquet-snappy-compress
+
+sqlContext.setConf("spark.sql.parquet.compression.codec","snappy")
+df.write.parquet("/user/cloudera/acct_trx/parquet-snappy-compress")
+hdfs dfs -ls /user/cloudera/acct_trx/parquet-snappy-compress
+
+#save the data to hdfs using gzip compression as text file at /user/cloudera/acct_trx/text-gzip-compress
+
+df.map(lambda x:','.join(str(i) for i in x)).saveAsTextFile("/user/cloudera/acct_trx/text-gzip-compress",compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
+
+hdfs dfs -ls /user/cloudera/acct_trx/text-gzip-compress
+
+#save the data to hdfs using no compression as sequence file at /user/cloudera/problem5/sequence
+
+df.map(lambda x:(str(x[0]),','.join(str(i) for i in x))).saveAsSequenceFile("/user/cloudera/acct_trx/sequence")
+
+hdfs dfs -ls user/cloudera/acct_trx/sequence
+
+#save the data to hdfs using snappy compression as text file at /user/cloudera/acct_trx/text-snappy-compress
+
+df.map(lambda x:','.join(str(i) for i in x)).saveAsTextFile("/user/cloudera/acct_trx/text-snappy-compress",compressionCodecClass="org.apache.hadoop.io.compress.SnappyCodec")
+
+
+
+5.Transform/Convert data-files at /user/cloudera/acct_trx/parquet-snappy-compress and store the converted file at the following locations and file formats
+
+#save the data to hdfs using no compression as parquet file at /user/cloudera/acct_trx/parquet-no-compress
+
+hdfs dfs -ls /user/cloudera/acct_trx/parquet-snappy-compress
+
+df=sqlContext.read.parquet("/user/cloudera/acct_trx/parquet-snappy-compress")
+
+sqlContext.setConf("spark.sql.parquet.compression.codec","uncompressed")
+
+df.write.parquet("/user/cloudera/acct_trx/parquet-no-compress")
+
+hdfs dfs -ls /user/cloudera/acct_trx/parquet-no-compress
+
+#save the data to hdfs using snappy compression as avro file at /user/cloudera/acct_trx/avro-snappy
+
+ sqlContext.setConf("spark.sql.avro.compression.codec","snappy")
+
+ df.write.format("com.databricks.spark.avro").save("/user/cloudera/acct_trx/avro-snappy")
+ hdfs dfs -ls /user/cloudera/acct_trx/avro-snappy
+
+
+6.Transform/Convert data-files at /user/cloudera/acct_trx/avro-snappy and store the converted file at the following locations and file formats
+ 
+ df=sqlContext.read.format("com.databricks.spark.avro").load("/user/cloudera/acct_trx/avro-snappy")
+
+#save the data to hdfs using no compression as json file at /user/cloudera/acct_trx/json-no-compress
+
+ df.coalesce(3).write.json("/user/cloudera/acct_trx/json-no-compress")
+ hdfs dfs -ls /user/cloudera/acct_trx/json-no-compress
+
+#save the data to hdfs using gzip compression as json file at /user/cloudera/acct_trx/json-gzip
+
+ df.toJSON().saveAsTextFile("/user/cloudera/acct_trx/json-gzip",compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
+
+ hdfs dfs -ls /user/cloudera/acct_trx/json-gzip
+
+7.Transform/Convert data-files at /user/cloudera/acct_trx/json-gzip and store the converted file at the following locations and file formats
+
+ df=sqlContext.read.json("/user/cloudera/acct_trx/json-gzip")
+
+#save the data to as comma separated text using gzip compression at /user/cloudera/acct_trx/csv-gzip
+
+ df.map(lambda x:','.join(str(i) for i in x)).saveAsTextFile("/user/cloudera/acct_trx/csv-gzip",compressionCodecClass='org.apache.hadoop.io.compress.GzipCodec')
+
+ hdfs dfs -ls /user/cloudera/acct_trx/csv-gzip
+
+8.Using spark access data at /user/cloudera/acct_trx/sequence and stored it back to hdfs using no compression as ORC file to HDFS to destination /user/cloudera/acct_trx/orc 
+
+rdd=sc.sequenceFile("/user/cloudera/acct_trx/sequence")
+df=rdd.map(lambda x:x[1].split(',')).toDF()
+
+df.write.orc("/user/cloudera/acct_trx/orc")
+hdfs dfs -ls /user/cloudera/acct_trx/orc
