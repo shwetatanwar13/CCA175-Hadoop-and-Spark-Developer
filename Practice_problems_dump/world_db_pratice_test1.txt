@@ -1,0 +1,57 @@
+Problem 2:
+
+1.Using sqoop copy data available in mysql city table to folder /user/cloudera/city on hdfs as text file. columns should be delimited by pipe '|'
+
+sqoop-import \
+--connect jdbc:mysql://quickstart.cloudera:3306/world \
+--username root \
+--password cloudera \
+--table city \
+--target-dir /user/cloudera/city \
+--as-textfile \
+--fields-terminated-by '|'
+
+hdfs dfs -ls /user/cloudera/city
+
+
+2.move all the files from /user/cloudera/city folder to /user/cloudera/problem2/city folder
+
+hdfs dfs -mv /user/cloudera/city /user/cloudera/problem2/city
+
+3.Change permissions of all the files under /user/cloudera/problem2/city such that owner has read,write and execute permissions, group has read and write permissions whereas others have just read and execute permissions
+
+hdfs dfs -chmod 765 /user/cloudera/problem2/city/*
+
+4.read data in /user/cloudera/problem2/city and do the following. Sort the resultant dataset by CountryCode
+
+column='ID,Name,CountryCode,District,Population'.split(',')
+
+citydf=sc.textFile("/user/cloudera/problem2/city"). \
+map(lambda x:(int(x.split('|')[0]),x.split('|')[1], \
+x.split('|')[2],x.split('|')[3],int(x.split('|')[4]))).toDF(column)
+
+
+5.filter such that your RDD\DF has cities whose population is lesser than 100000
+
+on the filtered data set find out the higest value in the population column under each country code
+on the filtered data set also find out total cities under each country code
+on the filtered data set also find out the average population of the cities under each country code
+on the filtered data set also find out the minimum population of the cities under each country code
+
+citydf.registerTempTable("city")
+
+res=sqlContext.sql("select CountryCode,max(Population) max_population,count(*) total_cities \
+,round(avg(Population),2) avg_population,min(Population) min_population \
+from city \
+where Population<100000 \
+group by CountryCode \
+order by CountryCode")
+
+6.store the result in avro file using snappy compression under these folders respectively
+/user/cloudera/problem2/city/result
+
+sqlContext.setConf("spark.sql.avro.compression.codec","snappy")
+sqlContext.setConf("spark.sql.shuffle.partitions","10")
+res.coalesce(2).write.format("com.databricks.spark.avro").save("/user/cloudera/problem2/city/result")
+
+hdfs dfs -ls /user/cloudera/problem2/city/result
